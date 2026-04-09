@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brookhaven Tax Strategy Planner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0f1e; color: #e0e0e0; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1a237e, #0d47a1); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .header h1 { font-size: 24px; color: #fff; }
+        .header .logo { font-size: 28px; font-weight: bold; color: #64b5f6; }
+        .nav-tabs { display: flex; background: #111827; border-bottom: 2px solid #1e3a5f; padding: 0 40px; }
+        .nav-tab { padding: 15px 30px; cursor: pointer; color: #8899aa; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.3s; }
+        .nav-tab:hover { color: #64b5f6; }
+        .nav-tab.active { color: #64b5f6; border-bottom-color: #64b5f6; background: rgba(100,181,246,0.05); }
+        .page { display: none; padding: 30px 40px; max-width: 1200px; margin: 0 auto; }
+        .page.active { display: block; }
+        .section-title { font-size: 22px; color: #64b5f6; margin: 25px 0 15px; border-left: 4px solid #64b5f6; padding-left: 15px; }
+        .section-desc { color: #8899aa; margin-bottom: 20px; font-size: 14px; }
+        .question-card { background: #111827; border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s; }
+        .question-card:hover { border-color: #64b5f6; box-shadow: 0 0 15px rgba(100,181,246,0.1); }
+        .question-text { font-size: 15px; flex: 1; padding-right: 20px; }
+        .toggle-group { display: flex; gap: 8px; }
+        .toggle-btn { padding: 8px 20px; border-radius: 20px; border: 1px solid #334155; background: transparent; color: #8899aa; cursor: pointer; font-size: 13px; transition: all 0.3s; }
+        .toggle-btn.yes.selected { background: #064e3b; border-color: #10b981; color: #10b981; }
+        .toggle-btn.no.selected { background: #7f1d1d; border-color: #ef4444; color: #ef4444; }
+        .input-group { background: #111827; border: 1px solid #1e3a5f; border-radius: 12px; padding: 18px; margin: 10px 0; }
+        .input-group label { display: block; color: #8899aa; font-size: 13px; margin-bottom: 6px; }
+        .input-group input, .input-group select { width: 100%; padding: 10px 15px; background: #0a0f1e; border: 1px solid #334155; border-radius: 8px; color: #e0e0e0; font-size: 14px; }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: #64b5f6; }
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .upload-zone { border: 2px dashed #334155; border-radius: 12px; padding: 40px; text-align: center; margin: 15px 0; cursor: pointer; transition: all 0.3s; }
+        .upload-zone:hover { border-color: #64b5f6; background: rgba(100,181,246,0.05); }
+        .upload-zone h3 { color: #64b5f6; margin-bottom: 8px; }
+        .upload-zone p { color: #8899aa; font-size: 13px; }
+        .btn-primary { background: linear-gradient(135deg, #1565c0, #0d47a1); color: white; border: none; padding: 14px 40px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 20px 10px; transition: all 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(21,101,192,0.4); }
+        .strategy-result { background: #111827; border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; margin: 12px 0; }
+        .strategy-result h3 { color: #64b5f6; margin-bottom: 8px; }
+        .type-badge { display: inline-block; padding: 3px 12px; border-radius: 12px; font-size: 12px; margin-right: 6px; margin-bottom: 4px; }
+        .badge-high { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
+        .badge-medium { background: rgba(245,158,11,0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+        .badge-low { background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid #10b981; }
+        .badge-type { background: rgba(100,181,246,0.2); color: #64b5f6; border: 1px solid #64b5f6; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin: 20px 0; }
+        .summary-card { background: #111827; border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; text-align: center; }
+        .summary-card .value { font-size: 28px; color: #10b981; font-weight: bold; }
+        .summary-card .label { color: #8899aa; font-size: 13px; margin-top: 5px; }
+        .progress-bar { width: 100%; height: 6px; background: #1e3a5f; border-radius: 3px; margin: 20px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #064e3b, #10b981); border-radius: 3px; transition: width 0.5s; }
+        .category-header { font-size: 16px; color: #f59e0b; margin: 15px 0 10px; padding: 8px 15px; background: rgba(245,158,11,0.1); border-radius: 8px; }
+        #matched-count { font-size: 18px; color: #10b981; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">BROOKHAVEN</div>
+        <h1>Tax Strategy Planning Engine - 2026</h1>
+    </div>
+    <div class="nav-tabs">
+        <div class="nav-tab active" onclick="showPage('page1')">1. Strategy Selector</div>
+        <div class="nav-tab" onclick="showPage('page2')">2. Client Inputs</div>
+        <div class="nav-tab" onclick="showPage('page3')">3. Strategy Summary</div>
+    </div>
+    <div id="page1" class="page active">
+        <h2 style="color:#fff;margin-bottom:5px;">Strategy Selector</h2>
+        <p class="section-desc">Answer the following questions to identify which tax strategies apply to your situation.</p>
+        <div class="progress-bar"><div class="progress-fill" id="progress1" style="width:0%"></div></div>
+        <div class="section-title">Income &amp; Filing</div><div id="q-income"></div>
+        <div class="section-title">Business &amp; Entity</div><div id="q-business"></div>
+        <div class="section-title">Investments &amp; Capital Gains</div><div id="q-investments"></div>
+        <div class="section-title">Real Estate</div><div id="q-realestate"></div>
+        <div class="section-title">Retirement &amp; Benefits</div><div id="q-retirement"></div>
+        <div class="section-title">Charitable &amp; Deductions</div><div id="q-charitable"></div>
+        <div class="section-title">Family &amp; Education</div><div id="q-family"></div>
+        <div class="section-title">Special Situations</div><div id="q-special"></div>
+        <div style="text-align:center;margin:30px 0;"><span id="matched-count">0 strategies matched</span><br><button class="btn-primary" onclick="showPage('page2')">Next: Enter Financial Details &rarr;</button></div>
+    </div>
+    <div id="page2" class="page">
+        <h2 style="color:#fff;margin-bottom:5px;">Client Financial Inputs</h2>
+        <p class="section-desc">Enter your financial details. Upload documents to auto-populate fields.</p>
+        <div class="section-title">Document Upload</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;">
+            <div class="upload-zone"><h3>W-2 / 1099</h3><p>Upload income docs</p><input type="file" style="display:none" accept=".pdf,.jpg,.png"></div>
+            <div class="upload-zone"><h3>Bank Statements</h3><p>Upload bank statements</p><input type="file" style="display:none" accept=".pdf,.csv"></div>
+            <div class="upload-zone"><h3>Investment Statements</h3><p>Upload brokerage statements</p><input type="file" style="display:none" accept=".pdf,.csv"></div>
+        </div>
+        <div class="section-title">Income Information</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Filing Status</label><select id="filing_status"><option>Single</option><option>Married Filing Jointly</option><option>Married Filing Separately</option><option>Head of Household</option></select></div>
+            <div class="input-group"><label>W-2 Wages ($)</label><input type="number" id="w2_wages" placeholder="0"></div>
+            <div class="input-group"><label>Self-Employment Income ($)</label><input type="number" id="se_income" placeholder="0"></div>
+            <div class="input-group"><label>Business Revenue ($)</label><input type="number" id="biz_revenue" placeholder="0"></div>
+            <div class="input-group"><label>Rental Income ($)</label><input type="number" id="rental_income" placeholder="0"></div>
+            <div class="input-group"><label>Dividend Income ($)</label><input type="number" id="dividend_income" placeholder="0"></div>
+        </div>
+        <div class="section-title">Capital Gains &amp; Investments</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Short-Term Capital Gains ($)</label><input type="number" id="st_gains" placeholder="0"></div>
+            <div class="input-group"><label>Long-Term Capital Gains ($)</label><input type="number" id="lt_gains" placeholder="0"></div>
+            <div class="input-group"><label>Unrealized Losses ($)</label><input type="number" id="unrealized_losses" placeholder="0"></div>
+            <div class="input-group"><label>Crypto Gains ($)</label><input type="number" id="crypto_gains" placeholder="0"></div>
+            <div class="input-group"><label>Portfolio Value ($)</label><input type="number" id="portfolio_value" placeholder="0"></div>
+        </div>
+        <div class="section-title">Real Estate</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Rental Properties (#)</label><input type="number" id="rental_count" placeholder="0"></div>
+            <div class="input-group"><label>Property Values ($)</label><input type="number" id="property_values" placeholder="0"></div>
+            <div class="input-group"><label>Mortgage Interest ($)</label><input type="number" id="mortgage_interest" placeholder="0"></div>
+        </div>
+        <div class="section-title">Business Details</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Entity Type</label><select id="entity_type"><option>None</option><option>Sole Proprietor</option><option>S Corporation</option><option>C Corporation</option><option>Partnership</option><option>LLC</option></select></div>
+            <div class="input-group"><label>Business Expenses ($)</label><input type="number" id="biz_expenses" placeholder="0"></div>
+            <div class="input-group"><label>Employees (#)</label><input type="number" id="employees" placeholder="0"></div>
+            <div class="input-group"><label>Owner Salary ($)</label><input type="number" id="owner_salary" placeholder="0"></div>
+        </div>
+        <div class="section-title">Deductions &amp; Credits</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Charitable Donations ($)</label><input type="number" id="charitable" placeholder="0"></div>
+            <div class="input-group"><label>State/Local Taxes ($)</label><input type="number" id="salt" placeholder="0"></div>
+            <div class="input-group"><label>Retirement Contributions ($)</label><input type="number" id="retirement_contrib" placeholder="0"></div>
+            <div class="input-group"><label>Education Expenses ($)</label><input type="number" id="education" placeholder="0"></div>
+        </div>
+        <div class="section-title">Family</div>
+        <div class="input-grid">
+            <div class="input-group"><label>Dependents (#)</label><input type="number" id="dependents" placeholder="0"></div>
+            <div class="input-group"><label>Taxpayer Age</label><input type="number" id="taxpayer_age" placeholder="0"></div>
+            <div class="input-group"><label>State</label><input type="text" id="state" placeholder="e.g. GA"></div>
+        </div>
+        <div style="text-align:center;margin:30px 0;"><button class="btn-primary" onclick="showPage('page1')">&larr; Back</button><button class="btn-primary" onclick="calculateStrategies();showPage('page3')">Calculate Results &rarr;</button></div>
+    </div>
+    <div id="page3" class="page">
+        <h2 style="color:#fff;margin-bottom:5px;">Strategy Recommendations</h2>
+        <p class="section-desc">Based on your selections and inputs, here are your optimal tax strategies.</p>
+        <div class="summary-grid">
+            <div class="summary-card"><div class="value" id="total-strategies">0</div><div class="label">Strategies Matched</div></div>
+            <div class="summary-card"><div class="value" id="est-savings">$0</div><div class="label">Est. Tax Savings</div></div>
+            <div class="summary-card"><div class="value" id="total-income">$0</div><div class="label">Total Income</div></div>
+            <div class="summary-card"><div class="value" id="complexity-score">--</div><div class="label">Avg Complexity</div></div>
+        </div>
+        <div class="section-title">Recommended Strategies</div>
+        <div id="results-container"></div>
+        <div style="text-align:center;margin:30px 0;"><button class="btn-primary" onclick="showPage('page2')">&larr; Edit Inputs</button><button class="btn-primary" onclick="exportResults()">Export PDF</button></div>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
