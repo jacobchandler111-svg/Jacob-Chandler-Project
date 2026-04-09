@@ -1,0 +1,1006 @@
+{
+  "strategies": [
+    {
+      "id": 1,
+      "name": "1031 Exchange on Real Estate (Like Kind Exchange)",
+      "type": "Business - Other",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [
+        "Real Estate Strategies"
+      ],
+      "deadline": "12/31",
+      "last_updated": "04/01/2026",
+      "triggers": [
+        "long_term_capital_gains",
+        "real_estate_sale",
+        "investment_property"
+      ],
+      "questions": [
+        "Do you own investment real estate you plan to sell?",
+        "Are you looking to defer capital gains from a property sale?"
+      ],
+      "category": "Capital Gains Deferral"
+    },
+    {
+      "id": 2,
+      "name": "401(h) Tax Trifecta",
+      "type": "Business - Other",
+      "applicable_to": "Business",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "04/15",
+      "last_updated": "03/25/2026",
+      "triggers": [
+        "business_owner",
+        "high_income",
+        "medical_expenses"
+      ],
+      "questions": [
+        "Do you own a business?",
+        "Do you have significant medical or retiree health expenses?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 3,
+      "name": "529 Savings Plan (Updated for OBBBA)",
+      "type": "Personal - Other",
+      "applicable_to": "Individual",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [
+        "OBBBA"
+      ],
+      "deadline": "12/31",
+      "last_updated": "04/09/2026",
+      "triggers": [
+        "children",
+        "education_expenses",
+        "college_planning"
+      ],
+      "questions": [
+        "Do you have children or dependents planning for college?"
+      ],
+      "category": "Education Planning"
+    },
+    {
+      "id": 4,
+      "name": "Accelerated Depreciation Strategy (Updated for OBBBA)",
+      "type": "Depreciation",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Never",
+      "tags": [
+        "Real Estate Strategies"
+      ],
+      "deadline": "09/15",
+      "last_updated": "02/20/2026",
+      "triggers": [
+        "business_owner",
+        "equipment_purchase",
+        "real_estate"
+      ],
+      "questions": [
+        "Did you purchase business equipment or property this year?"
+      ],
+      "category": "Depreciation"
+    },
+    {
+      "id": 5,
+      "name": "Accountable Plan",
+      "type": "Fringe Benefit",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/30/2026",
+      "triggers": [
+        "business_owner",
+        "employee_expenses"
+      ],
+      "questions": [
+        "Do you reimburse employees for business expenses?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 6,
+      "name": "Active Participation in Real Estate",
+      "type": "Business - Other",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "",
+      "tags": [
+        "Rental"
+      ],
+      "deadline": "12/31",
+      "last_updated": "04/09/2026",
+      "triggers": [
+        "rental_property",
+        "real_estate",
+        "passive_losses"
+      ],
+      "questions": [
+        "Do you actively manage rental properties?"
+      ],
+      "category": "Real Estate"
+    },
+    {
+      "id": 7,
+      "name": "Adoption Incentives",
+      "type": "Personal - Other",
+      "applicable_to": "Individual",
+      "complexity": "Medium",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "02/06/2026",
+      "triggers": [
+        "adoption"
+      ],
+      "questions": [
+        "Are you adopting a child?"
+      ],
+      "category": "Personal Credits"
+    },
+    {
+      "id": 8,
+      "name": "Amendment for Missed Deductions on Prior Year Return",
+      "type": "Personal - Other",
+      "applicable_to": "Both",
+      "complexity": "Low",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "missed_deductions"
+      ],
+      "questions": [
+        "Did you miss deductions on a prior year return?"
+      ],
+      "category": "Tax Filing"
+    },
+    {
+      "id": 9,
+      "name": "Augusta Rule",
+      "type": "Business - Other",
+      "applicable_to": "Business",
+      "complexity": "Low",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/20/2026",
+      "triggers": [
+        "business_owner",
+        "home_owner"
+      ],
+      "questions": [
+        "Do you own a home and host business meetings?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 10,
+      "name": "Backdoor Roth",
+      "type": "Retirement",
+      "applicable_to": "Individual",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [
+        "Retirement"
+      ],
+      "deadline": "04/15",
+      "last_updated": "02/11/2026",
+      "triggers": [
+        "high_income",
+        "retirement_planning"
+      ],
+      "questions": [
+        "Is your income too high for direct Roth IRA contributions?"
+      ],
+      "category": "Retirement Planning"
+    },
+    {
+      "id": 11,
+      "name": "Business Income & Deduction Optimization",
+      "type": "Business - Other",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/02/2026",
+      "triggers": [
+        "business_owner"
+      ],
+      "questions": [
+        "Do you own a business?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 12,
+      "name": "Business Vehicle Usage",
+      "type": "Business - Other",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "02/27/2026",
+      "triggers": [
+        "business_owner",
+        "vehicle_expense"
+      ],
+      "questions": [
+        "Do you use a vehicle for business?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 13,
+      "name": "C Corp: Misc Deductions",
+      "type": "C Corp",
+      "applicable_to": "Business",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "c_corp"
+      ],
+      "questions": [
+        "Do you operate as a C Corporation?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 14,
+      "name": "C Corp: Section 1202 Exclusion (OBBBA Update)",
+      "type": "Business Sale",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [
+        "OBBBA"
+      ],
+      "deadline": "10/15",
+      "last_updated": "03/02/2026",
+      "triggers": [
+        "c_corp",
+        "business_sale",
+        "qsbs"
+      ],
+      "questions": [
+        "Do you own C Corp stock held 5+ years?",
+        "Are you selling C Corp shares?"
+      ],
+      "category": "Capital Gains Deferral"
+    },
+    {
+      "id": 15,
+      "name": "C Corp: State Tax Savings",
+      "type": "C Corp",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "c_corp",
+        "state_taxes"
+      ],
+      "questions": [
+        "Do you operate a C Corp in a high-tax state?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 16,
+      "name": "Cancellation of Debt Income (COD)",
+      "type": "Personal - Other",
+      "applicable_to": "Both",
+      "complexity": "Low",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "04/15",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "debt_cancellation"
+      ],
+      "questions": [
+        "Have you had debt forgiven or cancelled?"
+      ],
+      "category": "Tax Filing"
+    },
+    {
+      "id": 17,
+      "name": "Capital Gain Offsets (Capital Loss Harvesting)",
+      "type": "Cap Gains",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Never",
+      "tags": [
+        "Capital Gains"
+      ],
+      "deadline": "12/31",
+      "last_updated": "02/13/2026",
+      "triggers": [
+        "capital_gains",
+        "investment_losses"
+      ],
+      "questions": [
+        "Do you have capital gains this year?",
+        "Do you have investments with unrealized losses?"
+      ],
+      "category": "Investment Tax Planning"
+    },
+    {
+      "id": 18,
+      "name": "Captive Insurance",
+      "type": "Income Shifting",
+      "applicable_to": "Business",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/25/2026",
+      "triggers": [
+        "business_owner",
+        "high_income",
+        "risk_management"
+      ],
+      "questions": [
+        "Do you own a profitable business with $1M+ revenue?"
+      ],
+      "category": "Advanced Business Planning"
+    },
+    {
+      "id": 19,
+      "name": "Charitable Donation of Appreciated Assets",
+      "type": "Itemized Ded",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "",
+      "tags": [
+        "Capital Gains",
+        "itemized deduction"
+      ],
+      "deadline": "12/31",
+      "last_updated": "03/20/2026",
+      "triggers": [
+        "charitable_giving",
+        "appreciated_assets",
+        "capital_gains"
+      ],
+      "questions": [
+        "Do you donate to charity?",
+        "Do you have appreciated stocks or assets?"
+      ],
+      "category": "Charitable Planning"
+    },
+    {
+      "id": 20,
+      "name": "Charitable Gift Financing",
+      "type": "Itemized Ded",
+      "applicable_to": "Individual",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/25/2026",
+      "triggers": [
+        "charitable_giving",
+        "high_income"
+      ],
+      "questions": [
+        "Do you make large charitable gifts?"
+      ],
+      "category": "Charitable Planning"
+    },
+    {
+      "id": 21,
+      "name": "Charitable LLC (CHC Charitable Planning)",
+      "type": "Itemized Ded",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [
+        "itemized deduction"
+      ],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "charitable_giving",
+        "high_income"
+      ],
+      "questions": [
+        "Do you want a structured charitable giving vehicle?"
+      ],
+      "category": "Charitable Planning"
+    },
+    {
+      "id": 22,
+      "name": "Charitable Planning",
+      "type": "Itemized Ded",
+      "applicable_to": "Both",
+      "complexity": "Low",
+      "recurring": "Yearly",
+      "tags": [
+        "itemized deduction",
+        "charity"
+      ],
+      "deadline": "12/31",
+      "last_updated": "01/28/2026",
+      "triggers": [
+        "charitable_giving"
+      ],
+      "questions": [
+        "Do you donate to charitable organizations?"
+      ],
+      "category": "Charitable Planning"
+    },
+    {
+      "id": 23,
+      "name": "Charitable Remainder Trust (CRT)",
+      "type": "Cap Gains",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [
+        "Capital Gains",
+        "charity",
+        "trust"
+      ],
+      "deadline": "12/31",
+      "last_updated": "01/28/2026",
+      "triggers": [
+        "capital_gains",
+        "charitable_giving",
+        "estate_planning"
+      ],
+      "questions": [
+        "Do you have highly appreciated assets?",
+        "Do you want income plus charitable giving?"
+      ],
+      "category": "Charitable Planning"
+    },
+    {
+      "id": 24,
+      "name": "Child and Dependent Care Credit",
+      "type": "Credit/Payment",
+      "applicable_to": "Individual",
+      "complexity": "Low",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "04/15",
+      "last_updated": "02/11/2026",
+      "triggers": [
+        "children",
+        "dependent_care"
+      ],
+      "questions": [
+        "Do you pay for child or dependent care?"
+      ],
+      "category": "Personal Credits"
+    },
+    {
+      "id": 25,
+      "name": "Choice of Entity - C Corp 1120C",
+      "type": "C Corp",
+      "applicable_to": "Business",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "business_owner",
+        "entity_selection"
+      ],
+      "questions": [
+        "Are you starting or restructuring a business?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 26,
+      "name": "Choice of Entity - Overview & Analysis",
+      "type": "Self-Employment Tax",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "business_owner",
+        "entity_selection"
+      ],
+      "questions": [
+        "Are you evaluating the best entity type?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 27,
+      "name": "Choice of Entity - Partnership 1065",
+      "type": "Self-Employment Tax",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "business_owner",
+        "partnership"
+      ],
+      "questions": [
+        "Are you considering a partnership?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 28,
+      "name": "Choice of Entity - S Corporation 1120S",
+      "type": "Self-Employment Tax",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "03/15",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "business_owner",
+        "s_corp"
+      ],
+      "questions": [
+        "Are you considering an S Corp?",
+        "Do you want to reduce SE taxes?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 29,
+      "name": "Choice of Entity - Sole Proprietor Sch C",
+      "type": "Self-Employment Tax",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "business_owner",
+        "sole_proprietor"
+      ],
+      "questions": [
+        "Are you a sole proprietor?"
+      ],
+      "category": "Entity Planning"
+    },
+    {
+      "id": 30,
+      "name": "College Student Strategies",
+      "type": "Personal - Other",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "children",
+        "education_expenses"
+      ],
+      "questions": [
+        "Do you have college students in your family?"
+      ],
+      "category": "Education Planning"
+    },
+    {
+      "id": 31,
+      "name": "Content Creator and Influencer Income Optimization",
+      "type": "Business - Other",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "content_creator",
+        "self_employed"
+      ],
+      "questions": [
+        "Are you a content creator or influencer?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 32,
+      "name": "Corporate-Owned Variable Universal Life (No-Limits Roth IRA)",
+      "type": "Income Shifting",
+      "applicable_to": "Business",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "04/01/2026",
+      "triggers": [
+        "business_owner",
+        "high_income",
+        "retirement_planning"
+      ],
+      "questions": [
+        "Do you want tax-free retirement income beyond IRA limits?"
+      ],
+      "category": "Advanced Business Planning"
+    },
+    {
+      "id": 33,
+      "name": "Cost Segregation (Updated for OBBBA)",
+      "type": "Depreciation",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Never",
+      "tags": [
+        "Real Estate Strategies"
+      ],
+      "deadline": "09/15",
+      "last_updated": "03/25/2026",
+      "triggers": [
+        "real_estate",
+        "property_purchase"
+      ],
+      "questions": [
+        "Did you buy or build commercial property?"
+      ],
+      "category": "Depreciation"
+    },
+    {
+      "id": 34,
+      "name": "Crypto Tax Optimization",
+      "type": "Cap Gains",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [
+        "Alternative Investments"
+      ],
+      "deadline": "12/31",
+      "last_updated": "04/01/2026",
+      "triggers": [
+        "cryptocurrency",
+        "capital_gains"
+      ],
+      "questions": [
+        "Do you have cryptocurrency investments?"
+      ],
+      "category": "Investment Tax Planning"
+    },
+    {
+      "id": 35,
+      "name": "Day Trader Tax Status (TTS) w/potential 475 MTM Election",
+      "type": "Business - Other",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "03/15",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "day_trading",
+        "active_trading"
+      ],
+      "questions": [
+        "Do you actively trade securities as a business?"
+      ],
+      "category": "Investment Tax Planning"
+    },
+    {
+      "id": 36,
+      "name": "Deferred Sales Trust (DST)",
+      "type": "Business Sale",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [
+        "Capital Gains"
+      ],
+      "deadline": "12/31",
+      "last_updated": "04/01/2026",
+      "triggers": [
+        "business_sale",
+        "capital_gains",
+        "real_estate_sale"
+      ],
+      "questions": [
+        "Are you selling a business or large asset?",
+        "Do you want to defer capital gains?"
+      ],
+      "category": "Capital Gains Deferral"
+    },
+    {
+      "id": 37,
+      "name": "Defined Benefit Plan/Cash Balance Plan",
+      "type": "Retirement",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [
+        "Retirement"
+      ],
+      "deadline": "09/15",
+      "last_updated": "03/25/2026",
+      "triggers": [
+        "business_owner",
+        "high_income",
+        "retirement_planning"
+      ],
+      "questions": [
+        "Do you want to contribute more than 401k limits to retirement?"
+      ],
+      "category": "Retirement Planning"
+    },
+    {
+      "id": 38,
+      "name": "Depletion Deduction for Royalties",
+      "type": "Business - Other",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [
+        "Alternative Investments"
+      ],
+      "deadline": "04/15",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "royalty_income",
+        "natural_resources"
+      ],
+      "questions": [
+        "Do you receive royalty income from natural resources?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 39,
+      "name": "Dividends",
+      "type": "Personal investment",
+      "applicable_to": "Both",
+      "complexity": "Low",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "dividend_income",
+        "investments"
+      ],
+      "questions": [
+        "Do you receive dividend income?"
+      ],
+      "category": "Investment Tax Planning"
+    },
+    {
+      "id": 40,
+      "name": "Donor Advised Fund (DAF)",
+      "type": "Itemized Ded",
+      "applicable_to": "Both",
+      "complexity": "Low",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "04/01/2026",
+      "triggers": [
+        "charitable_giving"
+      ],
+      "questions": [
+        "Do you want to bunch charitable deductions?"
+      ],
+      "category": "Charitable Planning"
+    },
+    {
+      "id": 41,
+      "name": "Education Assistance Program (Sec 127 Plan)",
+      "type": "Income Shifting",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "02/09/2026",
+      "triggers": [
+        "business_owner",
+        "education_expenses"
+      ],
+      "questions": [
+        "Do you want to provide tax-free education benefits to employees?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 42,
+      "name": "Education Credits",
+      "type": "Personal - Other",
+      "applicable_to": "Individual",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "04/15",
+      "last_updated": "02/09/2026",
+      "triggers": [
+        "education_expenses"
+      ],
+      "questions": [
+        "Are you paying for higher education?"
+      ],
+      "category": "Education Planning"
+    },
+    {
+      "id": 43,
+      "name": "Electric Vehicle Credits (Sunsetting Under OBBB)",
+      "type": "Credit/Payment",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "11/05/2025",
+      "triggers": [
+        "vehicle_purchase",
+        "ev_purchase"
+      ],
+      "questions": [
+        "Are you purchasing an electric vehicle?"
+      ],
+      "category": "Personal Credits"
+    },
+    {
+      "id": 44,
+      "name": "Employee Stock Options",
+      "type": "Personal investment",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/06/2026",
+      "triggers": [
+        "stock_options",
+        "employee_compensation"
+      ],
+      "questions": [
+        "Do you have employee stock options (ISOs or NSOs)?"
+      ],
+      "category": "Investment Tax Planning"
+    },
+    {
+      "id": 45,
+      "name": "Employee Stock Ownership Plan (ESOP)",
+      "type": "Business - Other",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "11/05/2025",
+      "triggers": [
+        "business_sale",
+        "business_owner"
+      ],
+      "questions": [
+        "Are you considering selling your business to employees?"
+      ],
+      "category": "Business Sale Planning"
+    },
+    {
+      "id": 46,
+      "name": "Employer Retirement Plan",
+      "type": "Retirement",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [
+        "Retirement"
+      ],
+      "deadline": "09/15",
+      "last_updated": "02/06/2026",
+      "triggers": [
+        "business_owner",
+        "retirement_planning"
+      ],
+      "questions": [
+        "Do you want to set up a retirement plan for your business?"
+      ],
+      "category": "Retirement Planning"
+    },
+    {
+      "id": 47,
+      "name": "Equipment Financing",
+      "type": "Depreciation",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Never",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "business_owner",
+        "equipment_purchase"
+      ],
+      "questions": [
+        "Are you financing equipment purchases?"
+      ],
+      "category": "Depreciation"
+    },
+    {
+      "id": 48,
+      "name": "Equipment Leasing",
+      "type": "Business - Other",
+      "applicable_to": "Business",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/31/2026",
+      "triggers": [
+        "business_owner",
+        "equipment_lease"
+      ],
+      "questions": [
+        "Are you leasing business equipment?"
+      ],
+      "category": "Business Tax Planning"
+    },
+    {
+      "id": 49,
+      "name": "Estate Tax Planning",
+      "type": "Personal - Other",
+      "applicable_to": "Both",
+      "complexity": "Medium",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "03/23/2026",
+      "triggers": [
+        "estate_planning",
+        "high_net_worth"
+      ],
+      "questions": [
+        "Is your estate value above the exemption amount?",
+        "Do you want to minimize estate taxes?"
+      ],
+      "category": "Estate Planning"
+    },
+    {
+      "id": 50,
+      "name": "Family Limited Partnership (FLP)",
+      "type": "Passthrough",
+      "applicable_to": "Both",
+      "complexity": "High",
+      "recurring": "Yearly",
+      "tags": [],
+      "deadline": "12/31",
+      "last_updated": "11/05/2025",
+      "triggers": [
+        "estate_planning",
+        "family_business",
+        "income_shifting"
+      ],
+      "questions": [
+        "Do you want to transfer wealth to family members?"
+      ],
+      "category": "Estate Planning"
+    }
+  ]
+}
