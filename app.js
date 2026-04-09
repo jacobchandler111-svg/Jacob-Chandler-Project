@@ -1,25 +1,559 @@
-// Brookhaven Tax Strategy Planner - Frontend Logic (Static/No Backend)
+// Brookhaven Tax Strategy Planning Engine - 2026
 // All calculations run client-side in JavaScript
+// Brooklyn Strategy Engine with Linear Interpolation, Time-Weighting, and Solver Framework
 
-const questions={income:[{id:"high_income",text:"Is your annual income above $250,000?",trigger:"high_income"},{id:"self_employed",text:"Are you self-employed or own a business?",trigger:"self_employed"},{id:"multiple_income",text:"Do you have multiple sources of income?",trigger:"multiple_income"},{id:"w2_employee",text:"Are you a W-2 employee?",trigger:"w2_employee"},{id:"variable_income",text:"Does your income vary significantly year to year?",trigger:"variable_income"}],business:[{id:"has_business",text:"Do you own or operate a business?",trigger:"has_business"},{id:"s_corp",text:"Is your business an S Corporation?",trigger:"s_corp"},{id:"c_corp",text:"Is your business a C Corporation?",trigger:"c_corp"},{id:"partnership",text:"Are you in a partnership or LLC?",trigger:"partnership"},{id:"business_equipment",text:"Have you purchased business equipment this year?",trigger:"business_equipment"},{id:"home_office",text:"Do you maintain a home office?",trigger:"home_office"},{id:"business_vehicle",text:"Do you use a vehicle for business?",trigger:"business_vehicle"},{id:"hiring_employees",text:"Are you planning to hire employees?",trigger:"hiring_employees"}],investments:[{id:"long_term_capital_gains",text:"Do you have long-term capital gains?",trigger:"long_term_capital_gains"},{id:"short_term_gains",text:"Do you have short-term capital gains?",trigger:"short_term_gains"},{id:"stock_options",text:"Do you have stock options (ISO or NSO)?",trigger:"stock_options"},{id:"crypto_investments",text:"Do you have cryptocurrency investments?",trigger:"crypto_investments"},{id:"dividend_income",text:"Do you receive significant dividend income?",trigger:"dividend_income"},{id:"investment_losses",text:"Do you have unrealized investment losses?",trigger:"investment_losses"},{id:"business_sale",text:"Are you planning to sell a business?",trigger:"business_sale"}],realestate:[{id:"rental_property",text:"Do you own rental properties?",trigger:"rental_property"},{id:"investment_property",text:"Do you own investment real estate?",trigger:"investment_property"},{id:"real_estate_sale",text:"Are you planning to sell real estate?",trigger:"real_estate_sale"},{id:"cost_segregation",text:"Have you considered cost segregation studies?",trigger:"cost_segregation"},{id:"opportunity_zone",text:"Are you interested in Opportunity Zone investments?",trigger:"opportunity_zone"}],retirement:[{id:"retirement_planning",text:"Are you actively planning for retirement?",trigger:"retirement_planning"},{id:"over_50",text:"Are you over 50 years old?",trigger:"over_50"},{id:"max_401k",text:"Are you maxing out your 401(k)?",trigger:"max_401k"},{id:"ira_contributions",text:"Do you contribute to an IRA?",trigger:"ira_contributions"},{id:"pension_income",text:"Do you receive pension income?",trigger:"pension_income"}],charitable:[{id:"charitable_giving",text:"Do you make significant charitable donations?",trigger:"charitable_giving"},{id:"donor_advised",text:"Are you interested in donor-advised funds?",trigger:"donor_advised"},{id:"high_salt",text:"Are your state/local taxes over $10,000?",trigger:"high_salt"},{id:"itemize_deductions",text:"Do you currently itemize deductions?",trigger:"itemize_deductions"},{id:"mortgage_interest",text:"Do you pay significant mortgage interest?",trigger:"mortgage_interest"}],family:[{id:"has_dependents",text:"Do you have dependents?",trigger:"has_dependents"},{id:"education_expenses",text:"Do you have education expenses?",trigger:"education_expenses"},{id:"estate_planning",text:"Are you doing estate planning?",trigger:"estate_planning"},{id:"family_business",text:"Is your business a family business?",trigger:"family_business"},{id:"gifting",text:"Are you planning significant gifts?",trigger:"gifting"}],special:[{id:"international",text:"Do you have international income or assets?",trigger:"international"},{id:"alternative_min_tax",text:"Are you subject to AMT?",trigger:"alternative_min_tax"},{id:"trust_beneficiary",text:"Are you a trust beneficiary?",trigger:"trust_beneficiary"},{id:"recent_life_change",text:"Have you had a major life change?",trigger:"recent_life_change"},{id:"tax_controversy",text:"Do you have any tax disputes or audits?",trigger:"tax_controversy"}]};
-let strategiesData=[],userAnswers={},matchedStrategies=[];
-const sectionMap={income:'q-income',business:'q-business',investments:'q-investments',realestate:'q-realestate',retirement:'q-retirement',charitable:'q-charitable',family:'q-family',special:'q-special'};
-const TAX_BRACKETS_2026={single:[[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[609350,0.35],[Infinity,0.37]],married_joint:[[23200,0.10],[94300,0.12],[201050,0.22],[383900,0.24],[487450,0.32],[731200,0.35],[Infinity,0.37]],married_separate:[[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[365600,0.35],[Infinity,0.37]],head_household:[[16550,0.10],[63100,0.12],[100500,0.22],[191950,0.24],[243700,0.32],[609350,0.35],[Infinity,0.37]]};
-const STANDARD_DEDUCTION_2026={single:15000,married_joint:30000,married_separate:15000,head_household:22500};
-const LTCG_RATES={single:[[47025,0],[518900,0.15],[Infinity,0.20]],married_joint:[[94050,0],[583750,0.15],[Infinity,0.20]]};
-function calculateTax(ti,f){f=f||'single';const b=TAX_BRACKETS_2026[f]||TAX_BRACKETS_2026.single;let t=0,p=0;for(const[l,r]of b){if(ti<=p)break;t+=(Math.min(ti,l)-p)*r;p=l;}return t;}
-function calculateLtcgTax(ltcg,oi,f){f=f||'single';const rates=LTCG_RATES[f]||LTCG_RATES.single;let t=0,p=0;const total=oi+ltcg;for(const[l,r]of rates){if(total<=p||oi>=l){p=l;continue;}const s=Math.max(oi,p),e=Math.min(total,l);if(e>s)t+=(e-s)*r;p=l;}return t;}
-function getMarginalRate(inc,f){f=f||'single';const b=TAX_BRACKETS_2026[f]||TAX_BRACKETS_2026.single;for(const[l,r]of b){if(inc<=l)return r;}return 0.37;}
-function estimateStrategySavings(strats,inp,ti,bt,f){let sv=0;const br=parseFloat(inp.biz_revenue||0),lt=parseFloat(inp.lt_gains||0),ch=parseFloat(inp.charitable||0),sa=parseFloat(inp.salt||0),mr=getMarginalRate(ti,f);for(const s of strats){const st=s.type||'';if(st==='Retirement'){sv+=Math.min(ti<500000?23500:69000,ti*0.10)*mr;}else if(st==='Depreciation'){sv+=Math.min(parseFloat(inp.property_values||0)*0.05,ti*0.15)*mr;}else if(st==='Cap Gains'||st==='Business Sale'){sv+=lt*0.05;}else if(st==='Itemized Ded'){sv+=Math.min(ch+sa,ti*0.10)*mr*0.3;}else if(st==='Self-Employment Tax'){sv+=parseFloat(inp.se_income||0)*0.0765*0.5;}else if(st==='Income Shifting'){sv+=ti*0.02*mr;}else if(st==='C Corp'||st==='Passthrough'){sv+=br*0.03*mr;}else if(st==='Credit/Payment'){sv+=Math.min(5000,bt*0.05);}else if(st==='Fringe Benefit'){sv+=Math.min(10000,br*0.02)*mr;}else{sv+=ti*0.01*mr;}}return Math.min(sv,bt*0.60);}
-function doCalculation(inp,mids){const w2=parseFloat(inp.w2_wages||0),se=parseFloat(inp.se_income||0),biz=parseFloat(inp.biz_revenue||0),rent=parseFloat(inp.rental_income||0),div=parseFloat(inp.dividend_income||0),stg=parseFloat(inp.st_gains||0),ltg=parseFloat(inp.lt_gains||0);const to=w2+se+biz+rent+div+stg,ti=to+ltg;const fm={'Single':'single','Married Filing Jointly':'married_joint','Married Filing Separately':'married_separate','Head of Household':'head_household'};const f=fm[inp.filing_status||'Single']||'single';const sd=STANDARD_DEDUCTION_2026[f]||15000;const txo=Math.max(0,to-sd);let bt=calculateTax(txo,f);bt+=calculateLtcgTax(ltg,txo,f);if(se>0)bt+=se*0.9235*0.153;const nt=f==='single'?200000:250000;if(ti>nt){bt+=Math.min(div+ltg+stg+rent,ti-nt)*0.038;}const m=strategiesData.filter(s=>mids.includes(s.id));const es=estimateStrategySavings(m,inp,ti,bt,f);return{baseline_tax:Math.round(bt),estimated_savings:Math.round(es),effective_rate:ti>0?Math.round(bt/ti*1000)/10:0,new_effective_rate:ti>0?Math.round((bt-es)/ti*1000)/10:0,total_income:Math.round(ti),strategies_applied:m.length};}
-function buildQuestions(){Object.keys(questions).forEach(s=>{const c=document.getElementById(sectionMap[s]);if(!c)return;questions[s].forEach(q=>{const d=document.createElement('div');d.className='question-card';d.innerHTML='<div class="question-text">'+q.text+'</div><div class="toggle-group"><button class="toggle-btn yes" onclick="setAnswer(\''+q.id+'\',\''+q.trigger+'\',true,this)">Yes</button><button class="toggle-btn no" onclick="setAnswer(\''+q.id+'\',\''+q.trigger+'\',false,this)">No</button></div>';c.appendChild(d);});});}
-function setAnswer(id,trigger,val,btn){userAnswers[trigger]=val;btn.parentElement.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('selected'));btn.classList.add('selected');updateProgress();updateMatchCount();}
-function updateProgress(){const t=Object.values(questions).flat().length,a=Object.keys(userAnswers).length;const e=document.getElementById('progress1');if(e)e.style.width=Math.round(a/t*100)+'%';}
-function updateMatchCount(){const tr=Object.keys(userAnswers).filter(k=>userAnswers[k]);let c=0;strategiesData.forEach(s=>{if(s.triggers&&s.triggers.some(t=>tr.includes(t)))c++;});const el=document.querySelector('.matched-count');if(el)el.textContent=c+' strategies matched';}
-function getFormInputs(){const fields=['filing_status','w2_wages','se_income','biz_revenue','rental_income','dividend_income','st_gains','lt_gains','unrealized_losses','crypto_gains','portfolio_value','rental_count','property_values','mortgage_interest','entity_type','biz_expenses','employees','owner_salary','charitable','salt','retirement_contrib','education','dependents','taxpayer_age','state'];const inp={};fields.forEach(f=>{const el=document.getElementById(f);if(el)inp[f]=el.value;});return inp;}
-function calculateStrategies(){const tr=Object.keys(userAnswers).filter(k=>userAnswers[k]);matchedStrategies=strategiesData.filter(s=>s.triggers&&s.triggers.some(t=>tr.includes(t)));const inp=getFormInputs();const mids=matchedStrategies.map(s=>s.id);const res=doCalculation(inp,mids);const te=document.getElementById('total-strategies');if(te)te.textContent=matchedStrategies.length;const se=document.getElementById('est-savings');if(se)se.textContent='$'+res.estimated_savings.toLocaleString();const ie=document.getElementById('total-income');if(ie)ie.textContent='$'+res.total_income.toLocaleString();const ce=document.getElementById('complexity-score');if(ce){if(matchedStrategies.length>0){const cm={'Low':1,'Medium':2,'High':3};const av=matchedStrategies.reduce((s,st)=>s+(cm[st.complexity]||2),0)/matchedStrategies.length;ce.textContent=av<=1.5?'Low':av<=2.5?'Medium':'High';}else{ce.textContent='--';}}const co=document.getElementById('results-container');if(co){co.innerHTML='';if(matchedStrategies.length===0){co.innerHTML='<div style="text-align:center;color:#8899aa;padding:40px;">No strategies matched. Go back and answer more questions.</div>';}else{const gr={};matchedStrategies.forEach(s=>{const ty=s.type||'Other';if(!gr[ty])gr[ty]=[];gr[ty].push(s);});Object.keys(gr).forEach(ty=>{const h=document.createElement('div');h.className='category-header';h.textContent=ty+' ('+gr[ty].length+')';co.appendChild(h);gr[ty].forEach(s=>{const cd=document.createElement('div');cd.className='strategy-result';const cc=s.complexity==='High'?'badge-high':s.complexity==='Medium'?'badge-medium':'badge-low';let lk='';if(s.links&&s.links.length>0){lk='<div style="margin-top:10px;">';s.links.forEach(l=>{lk+='<a href="'+l.url+'" target="_blank" rel="noopener noreferrer" style="color:#64b5f6;margin-right:15px;text-decoration:underline;">'+l.label+'</a>';});lk+='</div>';}if(s.irs_link){lk+='<div style="margin-top:5px;"><a href="'+s.irs_link+'" target="_blank" rel="noopener noreferrer" style="color:#64b5f6;text-decoration:underline;">IRS Reference</a></div>';}cd.innerHTML='<h3 style="color:#64b5f6;margin-bottom:8px;">'+s.name+'</h3><span class="type-badge badge-type">'+(s.type||'General')+'</span><span class="type-badge '+cc+'">'+(s.complexity||'Medium')+' Complexity</span><span class="type-badge badge-type">'+(s.recurring||'One-time')+'</span><p style="color:#c0c0c0;margin:8px 0;">'+(s.description||'')+'</p>'+(s.deadline?'<p style="color:#f59e0b;font-size:0.85em;">Deadline: '+s.deadline+'</p>':'')+lk;co.appendChild(cd);});});}}}
-function showPage(pageId){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));const pg=document.getElementById(pageId);if(pg)pg.classList.add('active');const ti=pageId==='page1'?0:pageId==='page2'?1:2;const tabs=document.querySelectorAll('.nav-tab');if(tabs[ti])tabs[ti].classList.add('active');}
-function exportResults(){const inp=getFormInputs();const mids=matchedStrategies.map(s=>s.id);const res=doCalculation(inp,mids);let rp='BROOKHAVEN TAX STRATEGY PLANNER - 2026\n========================================\n\nSUMMARY\n  Total Income: $'+res.total_income.toLocaleString()+'\n  Baseline Tax: $'+res.baseline_tax.toLocaleString()+'\n  Est. Savings: $'+res.estimated_savings.toLocaleString()+'\n  Effective Rate: '+res.effective_rate+'%\n  New Rate: '+res.new_effective_rate+'%\n  Strategies: '+res.strategies_applied+'\n\nMATCHED STRATEGIES\n-------------------\n';matchedStrategies.forEach((s,i)=>{rp+=(i+1)+'. '+s.name+'\n   Type: '+(s.type||'General')+' | Complexity: '+(s.complexity||'Medium')+'\n';if(s.description)rp+='   '+s.description+'\n';if(s.deadline)rp+='   Deadline: '+s.deadline+'\n';rp+='\n';});const blob=new Blob([rp],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='brookhaven-tax-report.txt';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
-document.querySelectorAll('.upload-zone').forEach(z=>{z.addEventListener('click',()=>{const i=z.querySelector('input[type=file]');if(i)i.click();});const i=z.querySelector('input[type=file]');if(i){i.addEventListener('change',()=>{if(i.files.length>0){const ps=z.querySelectorAll('p');if(ps[0])ps[0].textContent=i.files[0].name;if(ps[1])ps[1].textContent='File selected - enter values manually';}});}});
-async function loadStrategies(){try{const paths=['data/strategies.json','../data/strategies.json','./data/strategies.json'];let data=null;for(const p of paths){try{const r=await fetch(p);if(r.ok){data=await r.json();break;}}catch(e){}}if(data&&data.strategies){strategiesData=data.strategies;}else{strategiesData=[];}console.log('Loaded '+strategiesData.length+' strategies');}catch(e){console.error('Error loading strategies:',e);strategiesData=[];}}
-buildQuestions();loadStrategies();
+// ============================================================
+// SECTION 1: BROOKLYN STRATEGY DATA & REGRESSION ENGINE
+// ============================================================
+
+const BROOKLYN_STRATEGIES = {
+  beta1: {
+    id: 'brooklyn_beta1',
+    name: 'S&P 500 - Brooklyn Managed - Beta 1',
+    benchmark: 'S&P 500',
+    advisorManaged: false,
+    beta: 1,
+    // Data points: [leverage (decimal), annualLossRate]
+    // leverage = short side as decimal (e.g., 0.3 = 130/30)
+    dataPoints: [
+      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only' },
+      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.248, label: '130/30' },
+      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.322, label: '145/45' },
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.590, label: '200/100' },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.855, label: '250/150' },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.224, label: '325/225' }
+    ],
+    presets: ['Long-Only','130/30','145/45','200/100','250/150','325/225'],
+    minInvestment: 0, // placeholder - user will provide
+    managementFee: 0  // placeholder - user will provide
+  },
+  beta0: {
+    id: 'brooklyn_beta0',
+    name: 'CASH - Brooklyn Managed - Beta 0',
+    benchmark: 'CASH',
+    advisorManaged: false,
+    beta: 0,
+    dataPoints: [
+      { leverage: 1.00, longPct: 100, shortPct: 100, lossRate: 0.495, label: '100/100' },
+      { leverage: 1.50, longPct: 150, shortPct: 150, lossRate: 0.758, label: '150/150' },
+      { leverage: 2.00, longPct: 200, shortPct: 200, lossRate: 1.011, label: '200/200' },
+      { leverage: 2.75, longPct: 275, shortPct: 275, lossRate: 1.427, label: '275/275' }
+    ],
+    presets: ['100/100','150/150','200/200','275/275'],
+    minInvestment: 0,
+    managementFee: 0
+  },
+  beta05: {
+    id: 'brooklyn_beta05',
+    name: 'CASH/S&P 500 - Brooklyn Managed - Beta 0.5',
+    benchmark: 'CASH/S&P 500',
+    advisorManaged: false,
+    beta: 0.5,
+    dataPoints: [
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.674, label: '200/100' },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.933, label: '250/150' },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.3255, label: '325/225' }
+    ],
+    presets: ['200/100','250/150','325/225'],
+    minInvestment: 0,
+    managementFee: 0
+  },
+  advisorManaged: {
+    id: 'brooklyn_advisor',
+    name: 'S&P 500 - Advisor Managed',
+    benchmark: 'S&P 500',
+    advisorManaged: true,
+    beta: null,
+    dataPoints: [
+      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only' },
+      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.144, label: '130/30' },
+      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.218, label: '145/45' },
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.486, label: '200/100' },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.751, label: '250/150' },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.120, label: '325/225' }
+    ],
+    presets: ['Long-Only','130/30','145/45','200/100','250/150','325/225'],
+    minInvestment: 0,
+    managementFee: 0
+  }
+};
+
+// Linear interpolation for custom leverage on a specific strategy
+function interpolateLossRate(strategyKey, leverage) {
+  const strat = BROOKLYN_STRATEGIES[strategyKey];
+  if (!strat) return 0;
+  const pts = strat.dataPoints;
+  if (pts.length === 0) return 0;
+  // Clamp to range
+  if (leverage <= pts[0].leverage) return pts[0].lossRate;
+  if (leverage >= pts[pts.length - 1].leverage) return pts[pts.length - 1].lossRate;
+  // Find surrounding points
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (leverage >= pts[i].leverage && leverage <= pts[i + 1].leverage) {
+      const t = (leverage - pts[i].leverage) / (pts[i + 1].leverage - pts[i].leverage);
+      return pts[i].lossRate + t * (pts[i + 1].lossRate - pts[i].lossRate);
+    }
+  }
+  return pts[pts.length - 1].lossRate;
+}
+
+// Time-weight the annual loss rate based on implementation date
+function timeWeightedLoss(annualLossRate, implementationDate) {
+  const now = new Date();
+  const yearEnd = new Date(now.getFullYear(), 11, 31);
+  const implDate = new Date(implementationDate);
+  if (implDate > yearEnd) return 0;
+  const msInYear = 365.25 * 24 * 60 * 60 * 1000;
+  const remaining = Math.max(0, yearEnd - implDate);
+  const fraction = Math.min(1, remaining / msInYear);
+  return annualLossRate * fraction;
+}
+
+// Compute short-term losses generated by a Brooklyn strategy
+function computeBrooklynLoss(strategyKey, leverage, investmentAmount, implementationDate) {
+  const annualRate = interpolateLossRate(strategyKey, leverage);
+  const twRate = timeWeightedLoss(annualRate, implementationDate);
+  return investmentAmount * twRate;
+}
+
+// Get the Brooklyn strategy key from user selections
+function getBrooklynStrategyKey(advisorManaged, beta) {
+  if (advisorManaged) return 'advisorManaged';
+  if (beta === 0) return 'beta0';
+  if (beta === 0.5) return 'beta05';
+  return 'beta1';
+}
+
+// ============================================================
+// SECTION 2: TAX CALCULATION ENGINE
+// ============================================================
+
+const TAX_BRACKETS_2026 = {
+  single: [[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[609350,0.35],[Infinity,0.37]],
+  married_joint: [[23200,0.10],[94300,0.12],[201050,0.22],[383900,0.24],[487450,0.32],[731200,0.35],[Infinity,0.37]],
+  married_separate: [[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[365600,0.35],[Infinity,0.37]],
+  head_household: [[16550,0.10],[63100,0.12],[100500,0.22],[191950,0.24],[243700,0.32],[609350,0.35],[Infinity,0.37]]
+};
+const STANDARD_DEDUCTION_2026 = { single: 15000, married_joint: 30000, married_separate: 15000, head_household: 22500 };
+const LTCG_RATES = {
+  single: [[47025,0],[518900,0.15],[Infinity,0.20]],
+  married_joint: [[94050,0],[583750,0.15],[Infinity,0.20]]
+};
+
+function calculateTax(taxableIncome, filing) {
+  filing = filing || 'single';
+  const brackets = TAX_BRACKETS_2026[filing] || TAX_BRACKETS_2026.single;
+  let tax = 0, prev = 0;
+  for (const [limit, rate] of brackets) {
+    if (taxableIncome <= prev) break;
+    tax += (Math.min(taxableIncome, limit) - prev) * rate;
+    prev = limit;
+  }
+  return tax;
+}
+
+function calculateLtcgTax(ltcg, ordinaryIncome, filing) {
+  filing = filing || 'single';
+  const rates = LTCG_RATES[filing] || LTCG_RATES.single;
+  let tax = 0, prev = 0;
+  const total = ordinaryIncome + ltcg;
+  for (const [limit, rate] of rates) {
+    if (total <= prev || ordinaryIncome >= limit) { prev = limit; continue; }
+    const start = Math.max(ordinaryIncome, prev);
+    const end = Math.min(total, limit);
+    if (end > start) tax += (end - start) * rate;
+    prev = limit;
+  }
+  return tax;
+}
+
+function getMarginalRate(income, filing) {
+  filing = filing || 'single';
+  const brackets = TAX_BRACKETS_2026[filing] || TAX_BRACKETS_2026.single;
+  for (const [limit, rate] of brackets) {
+    if (income <= limit) return rate;
+  }
+  return 0.37;
+}
+
+// Compute baseline tax (no strategies applied)
+function computeBaselineTax(inputs) {
+  const fm = { 'Single': 'single', 'Married Filing Jointly': 'married_joint', 'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household' };
+  const f = fm[inputs.filing_status || 'Single'] || 'single';
+  const w2 = parseFloat(inputs.w2_wages || 0);
+  const se = parseFloat(inputs.se_income || 0);
+  const biz = parseFloat(inputs.biz_revenue || 0);
+  const rent = parseFloat(inputs.rental_income || 0);
+  const div = parseFloat(inputs.dividend_income || 0);
+  const stg = parseFloat(inputs.st_gains || 0);
+  const ltg = parseFloat(inputs.lt_gains || 0);
+  const ordinaryIncome = w2 + se + biz + rent + div + stg;
+  const totalIncome = ordinaryIncome + ltg;
+  const sd = STANDARD_DEDUCTION_2026[f] || 15000;
+  const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
+  let tax = calculateTax(taxableOrdinary, f);
+  tax += calculateLtcgTax(ltg, taxableOrdinary, f);
+  if (se > 0) tax += se * 0.9235 * 0.153;
+  const niitThreshold = f === 'single' ? 200000 : 250000;
+  if (totalIncome > niitThreshold) {
+    tax += Math.min(div + ltg + stg + rent, totalIncome - niitThreshold) * 0.038;
+  }
+  return { tax: Math.round(tax), totalIncome: Math.round(totalIncome), ordinaryIncome: Math.round(ordinaryIncome), taxableOrdinary: Math.round(taxableOrdinary), filing: f };
+}
+
+// Compute tax after applying short-term losses from strategies
+function computeTaxAfterStrategies(inputs, totalSTLosses) {
+  const fm = { 'Single': 'single', 'Married Filing Jointly': 'married_joint', 'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household' };
+  const f = fm[inputs.filing_status || 'Single'] || 'single';
+  const w2 = parseFloat(inputs.w2_wages || 0);
+  const se = parseFloat(inputs.se_income || 0);
+  const biz = parseFloat(inputs.biz_revenue || 0);
+  const rent = parseFloat(inputs.rental_income || 0);
+  const div = parseFloat(inputs.dividend_income || 0);
+  const stg = parseFloat(inputs.st_gains || 0);
+  const ltg = parseFloat(inputs.lt_gains || 0);
+  // ST losses first offset ST gains, then LT gains, then up to $3000 ordinary income
+  let remainingLoss = totalSTLosses;
+  let adjStg = stg;
+  let adjLtg = ltg;
+  // Offset ST gains first
+  const stOffset = Math.min(remainingLoss, adjStg);
+  adjStg -= stOffset;
+  remainingLoss -= stOffset;
+  // Then offset LT gains
+  const ltOffset = Math.min(remainingLoss, adjLtg);
+  adjLtg -= ltOffset;
+  remainingLoss -= ltOffset;
+  // Then up to $3000 against ordinary income
+  const ordinaryOffset = Math.min(remainingLoss, 3000);
+  remainingLoss -= ordinaryOffset;
+  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset;
+  const totalIncome = ordinaryIncome + adjLtg;
+  const sd = STANDARD_DEDUCTION_2026[f] || 15000;
+  const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
+  let tax = calculateTax(taxableOrdinary, f);
+  tax += calculateLtcgTax(adjLtg, taxableOrdinary, f);
+  if (se > 0) tax += se * 0.9235 * 0.153;
+  const niitThreshold = f === 'single' ? 200000 : 250000;
+  const niitIncome = ordinaryIncome + adjLtg;
+  if (niitIncome > niitThreshold) {
+    tax += Math.min(div + adjLtg + adjStg + rent, niitIncome - niitThreshold) * 0.038;
+  }
+  return { tax: Math.round(tax), totalIncome: Math.round(totalIncome), carryForwardLoss: Math.round(remainingLoss) };
+}
+
+// ============================================================
+// SECTION 3: SOLVER FRAMEWORK
+// ============================================================
+
+// The solver allocates dollars across enabled strategies to minimize tax
+// Each strategy: { key, leverage, investmentAmount }
+// Constraints: total invested <= availableCapital, each strategy >= minInvestment or 0
+function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, maxLeverage, implementationDate) {
+  const baseline = computeBaselineTax(inputs);
+  let bestTax = baseline.tax;
+  let bestAllocation = [];
+  let bestLosses = 0;
+  // For now: simple greedy + iterative approach
+  // Try each enabled strategy individually at max allocation, pick best
+  // Then try combinations (pairwise)
+  // This framework will expand as more strategies are added
+  const strategies = enabledStrategies.filter(s => {
+    const strat = BROOKLYN_STRATEGIES[s.key];
+    return strat && (s.investmentAmount >= (strat.minInvestment || 0) || s.investmentAmount === 0);
+  });
+  // Single strategy optimization
+  for (const s of strategies) {
+    const strat = BROOKLYN_STRATEGIES[s.key];
+    if (!strat) continue;
+    const maxInvest = Math.min(availableCapital, s.maxInvestment || availableCapital);
+    // Try different allocation levels in steps
+    const steps = 20;
+    for (let step = 0; step <= steps; step++) {
+      const invest = (maxInvest / steps) * step;
+      if (invest > 0 && invest < (strat.minInvestment || 0)) continue;
+      const lev = s.customLeverage || maxLeverage || 0.3;
+      const losses = computeBrooklynLoss(s.key, lev, invest, implementationDate);
+      const result = computeTaxAfterStrategies(inputs, losses);
+      if (result.tax < bestTax) {
+        bestTax = result.tax;
+        bestAllocation = [{ key: s.key, leverage: lev, investment: invest, losses: losses }];
+        bestLosses = losses;
+      }
+    }
+  }
+  return {
+    baselineTax: baseline.tax,
+    optimizedTax: bestTax,
+    savings: baseline.tax - bestTax,
+    allocation: bestAllocation,
+    totalLosses: bestLosses,
+    totalIncome: baseline.totalIncome,
+    roi: bestAllocation.length > 0 && bestAllocation[0].investment > 0
+      ? ((baseline.tax - bestTax) / bestAllocation[0].investment * 100).toFixed(1) + '%'
+      : '0%'
+  };
+}
+
+// ============================================================
+// SECTION 4: QUESTIONNAIRE & UI
+// ============================================================
+
+const questions = {
+  income: [
+    { id: 'high_income', text: 'Is your annual income above $250,000?', trigger: 'high_income' },
+    { id: 'self_employed', text: 'Are you self-employed or own a business?', trigger: 'self_employed' },
+    { id: 'multiple_income', text: 'Do you have multiple sources of income?', trigger: 'multiple_income' },
+    { id: 'w2_employee', text: 'Are you a W-2 employee?', trigger: 'w2_employee' },
+    { id: 'variable_income', text: 'Does your income vary significantly year to year?', trigger: 'variable_income' }
+  ],
+  investments: [
+    { id: 'long_term_capital_gains', text: 'Do you have long-term capital gains?', trigger: 'long_term_capital_gains' },
+    { id: 'short_term_gains', text: 'Do you have short-term capital gains?', trigger: 'short_term_gains' },
+    { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' },
+    { id: 'dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income' },
+    { id: 'investment_losses', text: 'Do you have unrealized investment losses?', trigger: 'investment_losses' }
+  ],
+  brooklyn: [
+    { id: 'advisor_managed', text: 'Is the portfolio advisor managed?', trigger: 'advisor_managed' },
+    { id: 'custom_leverage', text: 'Are you interested in a custom leverage strategy?', trigger: 'custom_leverage' }
+  ],
+  realestate: [
+    { id: 'rental_property', text: 'Do you own rental properties?', trigger: 'rental_property' },
+    { id: 'real_estate_sale', text: 'Are you planning to sell real estate?', trigger: 'real_estate_sale' },
+    { id: 'cost_segregation', text: 'Have you considered cost segregation studies?', trigger: 'cost_segregation' },
+    { id: 'opportunity_zone', text: 'Are you interested in Opportunity Zone investments?', trigger: 'opportunity_zone' }
+  ],
+  retirement: [
+    { id: 'retirement_planning', text: 'Are you actively planning for retirement?', trigger: 'retirement_planning' },
+    { id: 'over_50', text: 'Are you over 50 years old?', trigger: 'over_50' },
+    { id: 'max_401k', text: 'Are you maxing out your 401(k)?', trigger: 'max_401k' }
+  ],
+  business: [
+    { id: 'has_business', text: 'Do you own or operate a business?', trigger: 'has_business' },
+    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' },
+    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }
+  ]
+};
+
+let strategiesData = [], userAnswers = {}, matchedStrategies = [];
+const sectionMap = {
+  income: 'q-income', investments: 'q-investments', brooklyn: 'q-brooklyn',
+  realestate: 'q-realestate', retirement: 'q-retirement', business: 'q-business'
+};
+
+function buildQuestions() {
+  Object.keys(questions).forEach(s => {
+    const c = document.getElementById(sectionMap[s]);
+    if (!c) return;
+    questions[s].forEach(q => {
+      const d = document.createElement('div');
+      d.className = 'question-card';
+      d.innerHTML = '<div class="question-text">' + q.text + '</div><div class="toggle-group"><button class="toggle-btn yes" onclick="setAnswer(\'' + q.id + '\',\'' + q.trigger + '\',true,this)">Yes</button><button class="toggle-btn no" onclick="setAnswer(\'' + q.id + '\',\'' + q.trigger + '\',false,this)">No</button></div>';
+      c.appendChild(d);
+    });
+  });
+}
+
+function setAnswer(id, trigger, val, btn) {
+  userAnswers[trigger] = val;
+  btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  updateProgress();
+  updateMatchCount();
+  // Show/hide Brooklyn sub-questions based on answers
+  updateBrooklynUI();
+}
+
+function updateProgress() {
+  const total = Object.values(questions).flat().length;
+  const answered = Object.keys(userAnswers).length;
+  const el = document.getElementById('progress1');
+  if (el) el.style.width = Math.round(answered / total * 100) + '%';
+}
+
+function updateMatchCount() {
+  const triggers = Object.keys(userAnswers).filter(k => userAnswers[k]);
+  let count = 0;
+  strategiesData.forEach(s => {
+    if (s.triggers && s.triggers.some(t => triggers.includes(t))) count++;
+  });
+  const el = document.querySelector('.matched-count');
+  if (el) el.textContent = count + ' strategies matched';
+}
+
+function updateBrooklynUI() {
+  // Show beta selection if not advisor managed
+  const betaSection = document.getElementById('beta-selection');
+  const customLevSection = document.getElementById('custom-leverage-section');
+  if (betaSection) {
+    betaSection.style.display = userAnswers.advisor_managed === false ? 'block' : 'none';
+  }
+  if (customLevSection) {
+    customLevSection.style.display = userAnswers.custom_leverage ? 'block' : 'none';
+  }
+}
+
+function getFormInputs() {
+  const fields = ['filing_status','w2_wages','se_income','biz_revenue','rental_income',
+    'dividend_income','st_gains','lt_gains','unrealized_losses','portfolio_value',
+    'property_values','charitable','salt','retirement_contrib','taxpayer_age','state',
+    'implementation_date','available_capital','max_leverage','beta_selection',
+    'brooklyn_preset','custom_leverage_value'];
+  const inp = {};
+  fields.forEach(f => {
+    const el = document.getElementById(f);
+    if (el) inp[f] = el.value;
+  });
+  return inp;
+}
+
+function calculateStrategies() {
+  const inp = getFormInputs();
+  const baseline = computeBaselineTax(inp);
+  // Determine Brooklyn strategy
+  const advisorManaged = userAnswers.advisor_managed === true;
+  const beta = parseFloat(inp.beta_selection || '1');
+  const stratKey = getBrooklynStrategyKey(advisorManaged, beta);
+  const implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
+  const availCap = parseFloat(inp.available_capital || 0);
+  const customLev = userAnswers.custom_leverage;
+  let leverage = 0.3; // default
+  if (customLev && inp.custom_leverage_value) {
+    leverage = parseFloat(inp.custom_leverage_value);
+  } else if (inp.brooklyn_preset) {
+    const presetMap = {
+      'Long-Only': 0, '100/100': 1.0, '130/30': 0.3, '145/45': 0.45,
+      '150/150': 1.5, '200/100': 1.0, '200/200': 2.0,
+      '250/150': 1.5, '275/275': 2.75, '325/225': 2.25
+    };
+    leverage = presetMap[inp.brooklyn_preset] || 0.3;
+  }
+  // Run solver
+  const enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
+  const result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
+  // Display results
+  displayResults(result, baseline, inp);
+}
+
+function displayResults(result, baseline, inputs) {
+  const te = document.getElementById('total-strategies');
+  if (te) te.textContent = result.allocation.length;
+  const se = document.getElementById('est-savings');
+  if (se) se.textContent = '$' + result.savings.toLocaleString();
+  const ie = document.getElementById('total-income');
+  if (ie) ie.textContent = '$' + result.totalIncome.toLocaleString();
+  const be = document.getElementById('baseline-tax');
+  if (be) be.textContent = '$' + result.baselineTax.toLocaleString();
+  const oe = document.getElementById('optimized-tax');
+  if (oe) oe.textContent = '$' + result.optimizedTax.toLocaleString();
+  const re = document.getElementById('roi-display');
+  if (re) re.textContent = result.roi;
+  const effRate = result.totalIncome > 0 ? (result.baselineTax / result.totalIncome * 100).toFixed(1) : '0';
+  const newRate = result.totalIncome > 0 ? (result.optimizedTax / result.totalIncome * 100).toFixed(1) : '0';
+  const er = document.getElementById('effective-rate');
+  if (er) er.textContent = effRate + '%';
+  const nr = document.getElementById('new-rate');
+  if (nr) nr.textContent = newRate + '%';
+  // Strategy details
+  const co = document.getElementById('results-container');
+  if (co) {
+    co.innerHTML = '';
+    if (result.allocation.length === 0) {
+      co.innerHTML = '<div style="text-align:center;color:#8899aa;padding:40px;">No strategies improved your tax position. Try adjusting inputs or leverage.</div>';
+    } else {
+      result.allocation.forEach(a => {
+        const strat = BROOKLYN_STRATEGIES[a.key];
+        const cd = document.createElement('div');
+        cd.className = 'strategy-result';
+        const longPct = Math.round((1 + a.leverage) * 100);
+        const shortPct = Math.round(a.leverage * 100);
+        cd.innerHTML = '<h3 style="color:#64b5f6;margin-bottom:8px;">' + (strat ? strat.name : a.key) + '</h3>' +
+          '<span class="type-badge badge-type">Brooklyn Strategy</span>' +
+          '<span class="type-badge badge-medium">Leverage: ' + longPct + '/' + shortPct + '</span>' +
+          '<p style="color:#c0c0c0;margin:8px 0;">Investment: $' + Math.round(a.investment).toLocaleString() + '</p>' +
+          '<p style="color:#c0c0c0;margin:4px 0;">Short-term losses generated: $' + Math.round(a.losses).toLocaleString() + '</p>' +
+          '<p style="color:#4caf50;margin:4px 0;font-weight:bold;">Tax savings: $' + result.savings.toLocaleString() + '</p>';
+        co.appendChild(cd);
+      });
+    }
+  }
+}
+
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  const pg = document.getElementById(pageId);
+  if (pg) pg.classList.add('active');
+  const ti = pageId === 'page1' ? 0 : pageId === 'page2' ? 1 : 2;
+  const tabs = document.querySelectorAll('.nav-tab');
+  if (tabs[ti]) tabs[ti].classList.add('active');
+  if (pageId === 'page3') calculateStrategies();
+}
+
+function exportResults() {
+  const inp = getFormInputs();
+  const baseline = computeBaselineTax(inp);
+  const advisorManaged = userAnswers.advisor_managed === true;
+  const beta = parseFloat(inp.beta_selection || '1');
+  const stratKey = getBrooklynStrategyKey(advisorManaged, beta);
+  const implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
+  const availCap = parseFloat(inp.available_capital || 0);
+  const leverage = parseFloat(inp.custom_leverage_value || inp.max_leverage || 0.3);
+  const enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
+  const result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
+  let rp = 'BROOKHAVEN TAX STRATEGY PLANNER - 2026\n';
+  rp += '========================================\n\n';
+  rp += 'SUMMARY\n';
+  rp += '  Total Income: $' + result.totalIncome.toLocaleString() + '\n';
+  rp += '  Baseline Tax: $' + result.baselineTax.toLocaleString() + '\n';
+  rp += '  Optimized Tax: $' + result.optimizedTax.toLocaleString() + '\n';
+  rp += '  Tax Savings: $' + result.savings.toLocaleString() + '\n';
+  rp += '  ROI: ' + result.roi + '\n\n';
+  rp += 'STRATEGY ALLOCATION\n';
+  rp += '-------------------\n';
+  result.allocation.forEach((a, i) => {
+    const strat = BROOKLYN_STRATEGIES[a.key];
+    rp += (i + 1) + '. ' + (strat ? strat.name : a.key) + '\n';
+    rp += '   Investment: $' + Math.round(a.investment).toLocaleString() + '\n';
+    rp += '   Leverage: ' + a.leverage + '\n';
+    rp += '   Losses Generated: $' + Math.round(a.losses).toLocaleString() + '\n\n';
+  });
+  const blob = new Blob([rp], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'brookhaven-tax-report.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Load strategies from JSON (for backward compatibility with existing strategies)
+async function loadStrategies() {
+  try {
+    const paths = ['data/strategies.json', '../data/strategies.json', './data/strategies.json'];
+    let data = null;
+    for (const p of paths) {
+      try {
+        const r = await fetch(p);
+        if (r.ok) { data = await r.json(); break; }
+      } catch (e) {}
+    }
+    if (data && data.strategies) {
+      strategiesData = data.strategies;
+    } else {
+      strategiesData = [];
+    }
+    console.log('Loaded ' + strategiesData.length + ' strategies from JSON');
+  } catch (e) {
+    console.error('Error loading strategies:', e);
+    strategiesData = [];
+  }
+}
+
+// Initialize
+buildQuestions();
+loadStrategies();
+console.log('Brooklyn Strategy Engine initialized with ' + Object.keys(BROOKLYN_STRATEGIES).length + ' strategy variations');
