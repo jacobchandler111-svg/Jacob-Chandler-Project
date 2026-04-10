@@ -590,7 +590,7 @@ const questions = {
     { id: 'short_term_gains', text: 'Do you have short-term capital gains?', trigger: 'short_term_gains' },
     { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' },
     { id: 'dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income' },
-    { id: 'investment_losses', text: 'Do you have unrealized investment losses?', trigger: 'investment_losses' }
+    { id: 'investment_losses', text: 'Do you have unrealized investment losses?', trigger: 'investment_losses' },
     { id: 'delphi_interest', text: 'Are you interested in offsetting ordinary income through alternative fund strategies (Delphi)?', trigger: 'high_income' },
     { id: 'delphi_interest', text: 'Are you interested in offsetting ordinary income through alternative fund strategies (Delphi)?', trigger: 'high_income' },
   ],
