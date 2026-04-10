@@ -77,6 +77,83 @@ const BROOKLYN_STRATEGIES = {
   }
 };
 
+// Delphi Fund Strategies - Class A and Class B
+const DELPHI_STRATEGIES = {
+  classA: {
+    id: 'delphi_classA',
+    name: 'Delphi - Class A',
+    minInvestment: 5000000,
+    managementFee: 0.0175,
+    liquidity: 'Monthly',
+    liquidityNotice: '30 days',
+    allocations: {
+      shortTermCapitalGainLoss: -0.05,
+      ordinaryIncomeExpense: -0.30,
+      longTermCapitalGainLoss: 0.25,
+      qualifiedDividends: 0.06,
+      foreignTaxesPaid: -0.01
+    }
+  },
+  classB: {
+    id: 'delphi_classB',
+    name: 'Delphi - Class B',
+    minInvestment: 1000000,
+    managementFee: 0.02,
+    liquidity: 'Quarterly',
+    liquidityNotice: '30 days',
+    allocations: {
+      shortTermCapitalGainLoss: -0.05,
+      ordinaryIncomeExpense: -0.30,
+      longTermCapitalGainLoss: 0.25,
+      qualifiedDividends: 0.06,
+      foreignTaxesPaid: -0.01
+    }
+  }
+};
+
+// Compute Delphi allocation for a given investment amount and class
+// Returns an object with each tax character's dollar impact
+// investmentDate is optional; if provided, time-weights the allocation
+function computeDelphiAllocation(classKey, investmentAmount, investmentDate) {
+  const fund = DELPHI_STRATEGIES[classKey];
+  if (!fund) return null;
+  const alloc = fund.allocations;
+
+  // Time-weighting: fraction of the year remaining from investment date
+  let fraction = 1;
+  if (investmentDate) {
+    const now = new Date(investmentDate);
+    const yearEnd = new Date(now.getFullYear(), 11, 31);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const msInYear = yearEnd - yearStart;
+    const remaining = yearEnd - now;
+    fraction = Math.max(0, Math.min(1, remaining / msInYear));
+  }
+
+  const netInvestment = investmentAmount * (1 - fund.managementFee);
+
+  return {
+    shortTermCapitalGainLoss: netInvestment * alloc.shortTermCapitalGainLoss * fraction,
+    ordinaryIncomeExpense: netInvestment * alloc.ordinaryIncomeExpense * fraction,
+    longTermCapitalGainLoss: netInvestment * alloc.longTermCapitalGainLoss * fraction,
+    qualifiedDividends: netInvestment * alloc.qualifiedDividends * fraction,
+    foreignTaxesPaid: netInvestment * alloc.foreignTaxesPaid * fraction,
+    netOrdinaryOffset: netInvestment * (alloc.ordinaryIncomeExpense + alloc.shortTermCapitalGainLoss) * fraction,
+    netLTCG: netInvestment * alloc.longTermCapitalGainLoss * fraction,
+    managementFee: investmentAmount * fund.managementFee,
+    className: fund.name,
+    liquidity: fund.liquidity,
+    liquidityNotice: fund.liquidityNotice
+  };
+}
+
+// Get Delphi minimum investment for a given class
+function getDelphiMinInvestment(classKey) {
+  const fund = DELPHI_STRATEGIES[classKey];
+  return fund ? fund.minInvestment : 0;
+}
+
+
 function interpolateLossRate(strategyKey, leverage) {
   const strat = BROOKLYN_STRATEGIES[strategyKey];
   if (!strat) return 0;
@@ -514,6 +591,7 @@ const questions = {
     { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' },
     { id: 'dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income' },
     { id: 'investment_losses', text: 'Do you have unrealized investment losses?', trigger: 'investment_losses' }
+    { id: 'delphi_interest', text: 'Are you interested in offsetting ordinary income through alternative fund strategies (Delphi)?', trigger: 'high_income' },
   ],
   brooklyn: [
     { id: 'advisor_managed', text: 'Is the portfolio advisor managed?', trigger: 'advisor_managed' },
