@@ -1001,6 +1001,26 @@
         "Do you want to transfer wealth to family members?"
       ],
       "category": "Estate Planning"
+    },
+    {
+      "id": 51,
+      "name": "Delphi Fund (Class A & B) - Ordinary Income Offset",
+      "type": "Investment",
+      "applicable_to": "Individual",
+      "complexity": "Low",
+      "recurring": "Investment date",
+      "tags": [],
+      "deadline": "",
+      "last_updated": "04/10/2026",
+      "triggers": [
+        "high_income",
+        "investments"
+      ],
+      "questions": [
+        "Are you a high income earner looking to offset ordinary income?",
+        "Are you interested in alternative fund strategies that generate tax losses?"
+      ],
+      "category": "Ordinary Income Tax Offset"
     }
   ]
 }
