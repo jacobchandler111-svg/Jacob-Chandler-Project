@@ -260,7 +260,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   // This framework will expand as more strategies are added
   const strategies = enabledStrategies.filter(s => {
     const strat = BROOKLYN_STRATEGIES[s.key];
-    return strat && (s.investmentAmount >= (strat.minInvestment || 0) || s.investmentAmount === 0);
+    return strat != null;
   });
   // Single strategy optimization
   for (const s of strategies) {
@@ -557,3 +557,4 @@ async function loadStrategies() {
 buildQuestions();
 loadStrategies();
 console.log('Brooklyn Strategy Engine initialized with ' + Object.keys(BROOKLYN_STRATEGIES).length + ' strategy variations');
+
