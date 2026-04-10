@@ -1,78 +1,194 @@
-# Brookhaven Tax Strategy Planning Engine - 2026
+# Brookhaven Tax Strategy Planning Engine — 2025 / 2026
 
-A comprehensive tax strategy recommendation platform built with Python (Flask) and HTML/JavaScript. Designed for tax professionals to help clients identify and optimize their tax planning strategies.
+A client-side tax strategy recommendation and calculation platform built with HTML, CSS, and vanilla JavaScript. Designed for tax professionals at Brookhaven to help clients identify optimal tax planning strategies, compute federal and state tax liabilities, and model the impact of various strategies on their overall tax position.
 
-## Features
+Deployed via GitHub Pages.
 
-### Page 1: Strategy Selector
-- **Yes/No toggle questions** across 8 categories: Income, Business, Investments, Real Estate, Retirement, Charitable, Family, and Special Situations
-- Real-time strategy matching as questions are answered
-- Progress bar tracking completion
-- Maps client responses to 130+ tax strategies
+---
 
-### Page 2: Client Financial Inputs
-- **Hard input fields** for income, capital gains, real estate, business details, deductions, and family information
-- **Document upload zones** for W-2s, bank statements, and investment statements
-- Auto-populate fields from uploaded documents (requires OCR backend)
-- Filing status, entity type, and state selection
+## Overview
 
-### Page 3: Strategy Summary
-- **Matched strategy recommendations** grouped by category
-- Estimated tax savings calculations
-- Complexity scoring
-- PDF export functionality
+The engine walks a tax professional through three pages:
 
-## Tech Stack
-- **Frontend:** HTML5, CSS3, Vanilla JavaScript
-- **Backend:** Python 3.11+, Flask
-- **Data:** JSON strategy database with trigger-based matching
-- **Tax Engine:** 2026 IRS brackets, LTCG rates, SE tax, NIIT calculations
+1. **Strategy Selector** — Yes/No toggle questions across eight categories that narrow a universe of 50+ tax strategies down to only those relevant to the client.
+2. **Client Financial Inputs** — Hard-number fields for income, capital gains, real estate, business details, deductions, and family information, plus filing status, entity type, state, and tax year.
+3. **Strategy Summary** — Matched strategy recommendations grouped by category with estimated tax savings, complexity scores, and a federal vs. state tax breakdown.
+
+All calculations run entirely in the browser. No backend server is required once the static files are served.
+
+---
+
+## Key Features
+
+- **Multi-year tax brackets** — Toggle between 2025 and 2026 federal IRS brackets (loaded dynamically from `data/taxBrackets.json`).
+- **All 50 states + DC** — State income tax brackets for every U.S. state and the District of Columbia, with year-aware lookups for 2025 and 2026.
+- **Brooklyn Strategy Engine** — Linear interpolation and time-weighted regression across six portfolio constructions (Long-Only through 325/225 leverage) with Delphi and Helix fund data.
+- **Solver Framework** — Iterative solver that models pre- and post-strategy tax positions and computes estimated savings.
+- **Strategy Database** — JSON-driven strategy catalog with trigger-based matching, complexity scoring, and category grouping.
+- **No backend required** — Pure HTML/CSS/JS; deploy anywhere that serves static files (GitHub Pages, S3, Netlify, etc.).
+
+---
 
 ## Project Structure
-\`\`\`
-Brookhaven-Tax--Project/
-├── app.py                  # Flask backend & tax calculation engine
-├── requirements.txt        # Python dependencies
+
+```
+Jacob-Chandler-Project/
 ├── data/
-│   └── strategies.json     # 130+ tax strategies database
-├── templates/
-│   └── index.html          # Main 3-page frontend
-├── static/
-│   └── app.js              # Frontend JavaScript logic
+│   ├── strategies.json      # Tax strategy catalog (triggers, questions, categories)
+│   └── taxBrackets.json     # Federal + state brackets for 2025 and 2026
+├── app.js                   # Core engine (4 sections — see below)
+├── index.html               # Three-page frontend with inline styles
 └── README.md
-\`\`\`
+```
 
-## Quick Start
-\`\`\`bash
-# Clone the repo
-git clone https://github.com/jacobchandler111-svg/Brookhaven-Tax--Project.git
-cd Brookhaven-Tax--Project
+### app.js Sections
 
-# Install dependencies
-pip install -r requirements.txt
+| Section | Description |
+|---------|-------------|
+| **1 — Brooklyn Strategy Data & Regression Engine** | Portfolio constructions, Delphi/Helix fund data, linear interpolation, and time-weighted return calculations. |
+| **2 — Tax Calculation Engine** | Loads `taxBrackets.json`, exposes `getFederalBrackets(year)` and `getStateBrackets(state, year)`, computes baseline and post-strategy federal + state tax. Handles LTCG rates, SE tax, NIIT, and standard/itemized deduction logic. |
+| **3 — Solver Framework** | Iterative engine that pairs each matched strategy with the client's financials to estimate dollar savings. |
+| **4 — UI & Questionnaire** | DOM wiring for the three-page flow, question rendering, progress bar, navigation, and results display. Reads `tax_year` and `state` from the form to drive year-aware and state-aware calculations. |
 
-# Run the server
-python app.py
+### data/strategies.json Schema
 
-# Open browser to http://localhost:5000
-\`\`\`
+Each strategy object follows this shape:
+
+```jsonc
+{
+  "id": 1,
+  "name": "1031 Exchange on Real Estate (Like Kind Exchange)",
+  "type": "Business - Other",
+  "applicable_to": "Both",          // "Individual", "Business", or "Both"
+  "complexity": "High",             // "Low", "Medium", or "High"
+  "recurring": "Never",             // "Never", "Yearly", "Quarterly", etc.
+  "tags": ["Real Estate Strategies"],
+  "deadline": "12/31",
+  "last_updated": "04/01/2026",
+  "triggers": [
+    "long_term_capital_gains",
+    "real_estate_sale",
+    "investment_property"
+  ],
+  "questions": [
+    "Do you own investment real estate you plan to sell?",
+    "Are you looking to defer capital gains from a property sale?"
+  ],
+  "category": "Capital Gains Deferral"
+}
+```
+
+### data/taxBrackets.json Structure
+
+```jsonc
+{
+  "federal": {
+    "2025": {
+      "single": [ { "min": 0, "max": 11925, "rate": 0.10 }, ... ],
+      "married_filing_jointly": [ ... ],
+      "head_of_household": [ ... ],
+      "married_filing_separately": [ ... ]
+    },
+    "2026": { ... }
+  },
+  "state": {
+    "CA": {
+      "2025": [ { "min": 0, "max": 10412, "rate": 0.01 }, ... ],
+      "2026": [ ... ]
+    },
+    "TX": {
+      "2025": [ { "min": 0, "max": 999999999, "rate": 0.0 } ],
+      ...
+    }
+    // ... all 50 states + DC
+  }
+}
+```
+
+States with no income tax (TX, FL, NV, WY, SD, AK, WA, NH, TN) have a single bracket with a 0% rate. The sentinel value `999999999` is used in place of `Infinity` (which JSON does not support) and is converted at load time in `app.js`.
+
+---
+
+## Getting Started
+
+Because there is no backend, you can run the app by opening `index.html` directly in a browser or by serving the repo with any static file server.
+
+```bash
+# Clone
+git clone https://github.com/jacobchandler111-svg/Jacob-Chandler-Project.git
+cd Jacob-Chandler-Project
+
+# Option A — open directly
+open index.html        # macOS
+start index.html       # Windows
+
+# Option B — lightweight local server (Python)
+python -m http.server 8000
+# then visit http://localhost:8000
+
+# Option C — GitHub Pages
+# The repo is already configured for Pages deployment on the main branch.
+```
+
+---
 
 ## Tax Strategy Categories
-- Capital Gains Deferral (1031 Exchange, Deferred Sales Trust, CRT, etc.)
-- Business Tax Planning (Accountable Plan, Augusta Rule, Vehicle Usage, etc.)
-- Retirement Planning (Backdoor Roth, Mega Backdoor, DB Plans, etc.)
-- Depreciation (Cost Segregation, Accelerated Depreciation, etc.)
-- Charitable Planning (DAF, Charitable LLC, Gift Financing, etc.)
-- Entity Planning (S-Corp, C-Corp, Partnership analysis)
-- Income Shifting (Captive Insurance, Hiring Kids, COVUL, etc.)
-- Education Planning (529, Education Credits, Sec 127)
-- Estate Planning (FLP, Estate Tax, Gifting Strategies)
-- Investment Tax Planning (Loss Harvesting, Crypto, NIIT, etc.)
-- OBBBA Updates (New 2026 legislation provisions)
+
+The strategy database covers the following categories:
+
+Capital Gains Deferral, Business Tax Planning, Retirement Planning, Depreciation, Charitable Planning, Entity Planning, Income Shifting, Education Planning, Estate Planning, Investment Tax Planning, and OBBBA Updates (2026 legislation provisions).
+
+---
 
 ## Brooklyn Strategy Benchmarks
-Includes investment performance data across multiple portfolio constructions:
-- Long-Only, 130/30, 145/45, 200/100, 250/150, 325/225
-- Delphi Class A & B fund allocations
-- Helix TA fund data
-- 10-year performance projections with fee structures
+
+The Brooklyn Strategy Engine models investment performance across multiple portfolio leverage constructions: Long-Only, 130/30, 145/45, 200/100, 250/150, and 325/225. It includes Delphi Class A and B fund allocations, Helix TA fund data, and 10-year performance projections with fee structures. The engine uses linear interpolation between data points and time-weighted regression to produce expected return and loss-rate estimates for each construction.
+
+---
+
+## Adding a New Strategy — Prompt Template
+
+Use the prompt below when asking an AI assistant (e.g., Claude) to add a new strategy to the project. Copy the template, fill in the bracketed fields with the details of the strategy you want to add, and paste the completed prompt into the chat.
+
+```
+I need you to add a new tax strategy to my Brookhaven Tax Strategy Planning Engine.
+
+Repository: https://github.com/jacobchandler111-svg/Jacob-Chandler-Project
+Branch: main
+
+Here are the details for the new strategy:
+
+STRATEGY NAME: [Full name of the strategy, e.g., "Qualified Small Business Stock (Section 1202)"]
+TYPE: [Category type, e.g., "Business - Other", "Investment", "Depreciation", "Fringe Benefit", etc.]
+APPLICABLE TO: [Who can use it — "Individual", "Business", or "Both"]
+COMPLEXITY: [How complex to implement — "Low", "Medium", or "High"]
+RECURRING: [How often it can be applied — "Never", "Yearly", "Quarterly", etc.]
+TAGS: [Any tags, e.g., "Real Estate Strategies", "OBBBA", etc. Leave blank if none]
+DEADLINE: [Key deadline, e.g., "12/31", "04/15", "09/15"]
+TRIGGERS: [What client answers should cause this strategy to surface — list the trigger keys, e.g., "business_owner", "capital_gains", "real_estate_sale"]
+QUESTIONS: [The Yes/No screening questions to show in Page 1, e.g., "Do you own shares in a qualified small business?", "Have you held QSBS for more than 5 years?"]
+CATEGORY: [Which grouping this falls under, e.g., "Capital Gains Deferral", "Business Tax Planning", "Retirement Planning", "Entity Planning", etc.]
+DESCRIPTION / NOTES: [Any additional context about how the strategy works, savings estimates, or special rules to be aware of]
+
+Please:
+1. Add the strategy entry to data/strategies.json with the next available ID.
+2. If there are any new trigger keys that don't already exist in the questionnaire in app.js (Section 4), add the corresponding Yes/No question(s) to the appropriate category.
+3. If the strategy requires a new category that doesn't exist yet, add it to both the strategies.json and the UI rendering logic in app.js.
+4. Commit the changes to main with a clear commit message.
+```
+
+---
+
+## Future Work
+
+- Add additional tax years as IRS publishes new brackets (the data structure supports arbitrary years).
+- Verify and update 2026 state bracket projections once official rates are published.
+- Expand strategy database as new legislation or planning techniques emerge.
+- Build OCR backend for document upload auto-population on Page 2.
+- PDF export of strategy summary results.
+
+---
+
+## License
+
+Private project — Brookhaven internal use.
