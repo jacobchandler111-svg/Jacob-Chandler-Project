@@ -16,16 +16,16 @@ const BROOKLYN_STRATEGIES = {
     // Data points: [leverage (decimal), annualLossRate]
     // leverage = short side as decimal (e.g., 0.3 = 130/30)
     dataPoints: [
-      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only' },
-      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.248, label: '130/30' },
-      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.322, label: '145/45' },
-      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.590, label: '200/100' },
-      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.855, label: '250/150' },
-      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.224, label: '325/225' }
+      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only', minInvestment: 250000 },
+      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.248, label: '130/30', minInvestment: 500000 },
+      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.322, label: '145/45', minInvestment: 500000 },
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.590, label: '200/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.855, label: '250/150', minInvestment: 1000000 },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.224, label: '325/225', minInvestment: 1000000 }
     ],
     presets: ['Long-Only','130/30','145/45','200/100','250/150','325/225'],
-    minInvestment: 0, // placeholder - user will provide
-    managementFee: 0  // placeholder - user will provide
+    minInvestment: 250000,
+    managementFee: 0 
   },
   beta0: {
     id: 'brooklyn_beta0',
@@ -34,13 +34,13 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: false,
     beta: 0,
     dataPoints: [
-      { leverage: 1.00, longPct: 100, shortPct: 100, lossRate: 0.495, label: '100/100' },
-      { leverage: 1.50, longPct: 150, shortPct: 150, lossRate: 0.758, label: '150/150' },
-      { leverage: 2.00, longPct: 200, shortPct: 200, lossRate: 1.011, label: '200/200' },
-      { leverage: 2.75, longPct: 275, shortPct: 275, lossRate: 1.427, label: '275/275' }
+      { leverage: 1.00, longPct: 100, shortPct: 100, lossRate: 0.495, label: '100/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 150, shortPct: 150, lossRate: 0.758, label: '150/150', minInvestment: 1000000 },
+      { leverage: 2.00, longPct: 200, shortPct: 200, lossRate: 1.011, label: '200/200', minInvestment: 1000000 },
+      { leverage: 2.75, longPct: 275, shortPct: 275, lossRate: 1.427, label: '275/275', minInvestment: 1000000 }
     ],
     presets: ['100/100','150/150','200/200','275/275'],
-    minInvestment: 0,
+    minInvestment: 1000000,
     managementFee: 0
   },
   beta05: {
@@ -50,12 +50,12 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: false,
     beta: 0.5,
     dataPoints: [
-      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.674, label: '200/100' },
-      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.933, label: '250/150' },
-      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.3255, label: '325/225' }
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.674, label: '200/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.933, label: '250/150', minInvestment: 1000000 },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.3255, label: '325/225', minInvestment: 1000000 }
     ],
     presets: ['200/100','250/150','325/225'],
-    minInvestment: 0,
+    minInvestment: 1000000,
     managementFee: 0
   },
   advisorManaged: {
@@ -65,15 +65,15 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: true,
     beta: null,
     dataPoints: [
-      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only' },
-      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.144, label: '130/30' },
-      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.218, label: '145/45' },
-      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.486, label: '200/100' },
-      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.751, label: '250/150' },
-      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.120, label: '325/225' }
+      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only', minInvestment: 250000 },
+      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.144, label: '130/30', minInvestment: 500000 },
+      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.218, label: '145/45', minInvestment: 500000 },
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.486, label: '200/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.751, label: '250/150', minInvestment: 1000000 },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.120, label: '325/225', minInvestment: 1000000 }
     ],
     presets: ['Long-Only','130/30','145/45','200/100','250/150','325/225'],
-    minInvestment: 0,
+    minInvestment: 250000,
     managementFee: 0
   }
 };
@@ -124,6 +124,27 @@ function getBrooklynStrategyKey(advisorManaged, beta) {
   return 'beta1';
 }
 
+
+// Get the minimum investment required for a strategy at a given leverage level
+// Uses per-data-point minInvestment; interpolates to the nearest bracket
+function getMinInvestmentForLeverage(strategyKey, leverage) {
+  const strat = BROOKLYN_STRATEGIES[strategyKey];
+  if (!strat) return 0;
+  const pts = strat.dataPoints;
+  // Find the two data points that bracket the leverage
+  let lower = pts[0], upper = pts[pts.length - 1];
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (leverage >= pts[i].leverage && leverage <= pts[i + 1].leverage) {
+      lower = pts[i];
+      upper = pts[i + 1];
+      break;
+    }
+  }
+  // Use the higher minInvestment of the two bracketing points
+  const lowerMin = lower.minInvestment || strat.minInvestment || 0;
+  const upperMin = upper.minInvestment || strat.minInvestment || 0;
+  return Math.max(lowerMin, upperMin);
+}
 // ============================================================
 // SECTION 2: TAX CALCULATION ENGINE
 // ============================================================
@@ -269,19 +290,20 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     const maxInvest = Math.min(availableCapital, s.maxInvestment || availableCapital);
     // Try different allocation levels in steps
     const steps = 20;
-    for (let step = 0; step <= steps; step++) {
-      const invest = (maxInvest / steps) * step;
-      if (invest > 0 && invest < (strat.minInvestment || 0)) continue;
-      const lev = s.customLeverage || maxLeverage || 0.3;
-      const losses = computeBrooklynLoss(s.key, lev, invest, implementationDate);
-      const result = computeTaxAfterStrategies(inputs, losses);
-      if (result.tax < bestTax) {
-        bestTax = result.tax;
-        bestAllocation = [{ key: s.key, leverage: lev, investment: invest, losses: losses }];
-        bestLosses = losses;
+      for (let step = 0; step <= steps; step++) {
+        const invest = (maxInvest / steps) * step;
+        const lev = s.customLeverage || maxLeverage || 0.3;
+        const leverageMinInvestment = getMinInvestmentForLeverage(s.key, lev);
+        if (invest > 0 && invest < leverageMinInvestment) continue;
+        const losses = computeBrooklynLoss(s.key, lev, invest, implementationDate);
+        const result = computeTaxAfterStrategies(inputs, losses);
+        if (result.tax < bestTax) {
+          bestTax = result.tax;
+          bestAllocation = [{ key: s.key, leverage: lev, investment: invest, losses: losses }];
+          bestLosses = losses;
+        }
       }
     }
-  }
   return {
     baselineTax: baseline.tax,
     optimizedTax: bestTax,
