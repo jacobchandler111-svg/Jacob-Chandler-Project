@@ -86,6 +86,45 @@ const DELPHI_STRATEGIES = {
     managementFee: 0.0175,
     liquidity: 'Monthly',
     liquidityNotice: '30 days',
+    allocations: { shortTermCapitalGainLoss: -0.05, ordinaryIncomeExpense: -0.30, longTermCapitalGainLoss: 0.25, qualifiedDividends: 0.06, foreignTaxesPaid: -0.01 }
+  },
+  classB: {
+    id: 'delphi_classB',
+    name: 'Delphi - Class B',
+    minInvestment: 1000000,
+    managementFee: 0.02,
+    liquidity: 'Quarterly',
+    liquidityNotice: '30 days',
+    allocations: { shortTermCapitalGainLoss: -0.05, ordinaryIncomeExpense: -0.30, longTermCapitalGainLoss: 0.25, qualifiedDividends: 0.06, foreignTaxesPaid: -0.01 }
+  }
+};
+
+function computeDelphiAllocation(classKey, investmentAmount, investmentDate) {
+  const fund = DELPHI_STRATEGIES[classKey];
+  if (!fund) return null;
+  const alloc = fund.allocations;
+  let fraction = 1;
+  if (investmentDate) {
+    const now = new Date(investmentDate);
+    const yearEnd = new Date(now.getFullYear(), 11, 31);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    fraction = Math.max(0, Math.min(1, (yearEnd - now) / (yearEnd - yearStart)));
+  }
+  const net = investmentAmount * (1 - fund.managementFee);
+  return { shortTermCapitalGainLoss: net * alloc.shortTermCapitalGainLoss * fraction, ordinaryIncomeExpense: net * alloc.ordinaryIncomeExpense * fraction, longTermCapitalGainLoss: net * alloc.longTermCapitalGainLoss * fraction, qualifiedDividends: net * alloc.qualifiedDividends * fraction, foreignTaxesPaid: net * alloc.foreignTaxesPaid * fraction, netOrdinaryOffset: net * (alloc.ordinaryIncomeExpense + alloc.shortTermCapitalGainLoss) * fraction, netLTCG: net * alloc.longTermCapitalGainLoss * fraction, managementFee: investmentAmount * fund.managementFee, className: fund.name, liquidity: fund.liquidity };
+}
+
+function getDelphiMinInvestment(classKey) { return DELPHI_STRATEGIES[classKey] ? DELPHI_STRATEGIES[classKey].minInvestment : 0; }
+
+// Delphi Fund Strategies - Class A and Class B
+const DELPHI_STRATEGIES = {
+  classA: {
+    id: 'delphi_classA',
+    name: 'Delphi - Class A',
+    minInvestment: 5000000,
+    managementFee: 0.0175,
+    liquidity: 'Monthly',
+    liquidityNotice: '30 days',
     allocations: {
       shortTermCapitalGainLoss: -0.05,
       ordinaryIncomeExpense: -0.30,
@@ -592,6 +631,7 @@ const questions = {
     { id: 'dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income' },
     { id: 'investment_losses', text: 'Do you have unrealized investment losses?', trigger: 'investment_losses' }
     { id: 'delphi_interest', text: 'Are you interested in offsetting ordinary income through alternative fund strategies (Delphi)?', trigger: 'high_income' },
+    { id: 'delphi_interest', text: 'Are you interested in offsetting ordinary income through alternative fund strategies (Delphi)?', trigger: 'high_income' },
   ],
   brooklyn: [
     { id: 'advisor_managed', text: 'Is the portfolio advisor managed?', trigger: 'advisor_managed' },
@@ -857,3 +897,4 @@ loadStrategies();
 loadTaxBrackets();
 console.log('Brooklyn Strategy Engine initialized with ' + Object.keys(BROOKLYN_STRATEGIES).length + ' strategy variations');
 console.log('Multi-year tax engine active - supports 2025 and 2026 federal + all 50 states + DC');
+
