@@ -7,7 +7,7 @@
 // SECTION 1: BROOKLYN STRATEGY DATA & REGRESSION ENGINE
 // ============================================================
 
-const BROOKLYN_STRATEGIES = {h
+const BROOKLYN_STRATEGIES = {
   beta1: {
     id: 'brooklyn_beta1',
     name: 'S&P 500 - Brooklyn Managed - Beta 1',
