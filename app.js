@@ -111,15 +111,10 @@ const DELPHI_STRATEGIES = {
   }
 };
 
-// Compute Delphi allocation for a given investment amount and class
-// Returns an object with each tax character's dollar impact
-// investmentDate is optional; if provided, time-weights the allocation
 function computeDelphiAllocation(classKey, investmentAmount, investmentDate) {
   const fund = DELPHI_STRATEGIES[classKey];
   if (!fund) return null;
   const alloc = fund.allocations;
-
-  // Time-weighting: fraction of the year remaining from investment date
   let fraction = 1;
   if (investmentDate) {
     const now = new Date(investmentDate);
@@ -129,9 +124,7 @@ function computeDelphiAllocation(classKey, investmentAmount, investmentDate) {
     const remaining = yearEnd - now;
     fraction = Math.max(0, Math.min(1, remaining / msInYear));
   }
-
   const netInvestment = investmentAmount * (1 - fund.managementFee);
-
   return {
     shortTermCapitalGainLoss: netInvestment * alloc.shortTermCapitalGainLoss * fraction,
     ordinaryIncomeExpense: netInvestment * alloc.ordinaryIncomeExpense * fraction,
@@ -147,12 +140,10 @@ function computeDelphiAllocation(classKey, investmentAmount, investmentDate) {
   };
 }
 
-// Get Delphi minimum investment for a given class
 function getDelphiMinInvestment(classKey) {
   const fund = DELPHI_STRATEGIES[classKey];
   return fund ? fund.minInvestment : 0;
 }
-
 
 function interpolateLossRate(strategyKey, leverage) {
   const strat = BROOKLYN_STRATEGIES[strategyKey];
@@ -211,27 +202,44 @@ function getMinInvestmentForLeverage(strategyKey, leverage) {
   return Math.max(lowerMin, upperMin);
 }
 
+// Helper: find leverage label from data points
+function getLeverageLabel(strategyKey, leverage) {
+  var strat = BROOKLYN_STRATEGIES[strategyKey];
+  if (!strat) return leverage.toFixed(2) + 'x';
+  var pts = strat.dataPoints;
+  for (var i = 0; i < pts.length; i++) {
+    if (Math.abs(pts[i].leverage - leverage) < 0.001) {
+      return pts[i].label + ' (' + pts[i].longPct + '/' + pts[i].shortPct + ')';
+    }
+  }
+  // Interpolated - show long/short percentages
+  var longPct = Math.round((1 + leverage) * 100);
+  var shortPct = Math.round(leverage * 100);
+  return longPct + '/' + shortPct + ' (custom ' + (leverage * 100).toFixed(0) + '% leverage)';
+}
+
 // ============================================================
 // SECTION 2: TAX CALCULATION ENGINE (Multi-Year + State)
 // ============================================================
 
-// Dynamic tax data loaded from taxBrackets.json
 let TAX_DATA = null;
 
-// Hardcoded fallback for 2026 federal (backwards compatibility)
 const TAX_BRACKETS_2026_FALLBACK = {
   single: [[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[609350,0.35],[Infinity,0.37]],
   married_joint: [[23200,0.10],[94300,0.12],[201050,0.22],[383900,0.24],[487450,0.32],[731200,0.35],[Infinity,0.37]],
   married_separate: [[11600,0.10],[47150,0.12],[100525,0.22],[191950,0.24],[243725,0.32],[365600,0.35],[Infinity,0.37]],
   head_household: [[16550,0.10],[63100,0.12],[100500,0.22],[191950,0.24],[243700,0.32],[609350,0.35],[Infinity,0.37]]
 };
-const STANDARD_DEDUCTION_2026_FALLBACK = { single: 15000, married_joint: 30000, married_separate: 15000, head_household: 22500 };
+
+const STANDARD_DEDUCTION_2026_FALLBACK = {
+  single: 15000, married_joint: 30000, married_separate: 15000, head_household: 22500
+};
+
 const LTCG_RATES_FALLBACK = {
   single: [[47025,0],[518900,0.15],[Infinity,0.20]],
   married_joint: [[94050,0],[583750,0.15],[Infinity,0.20]]
 };
 
-// Load tax brackets from JSON file
 async function loadTaxBrackets() {
   const paths = ['data/taxBrackets.json', '../data/taxBrackets.json', './data/taxBrackets.json'];
   for (const p of paths) {
@@ -239,7 +247,6 @@ async function loadTaxBrackets() {
       const r = await fetch(p);
       if (r.ok) {
         TAX_DATA = await r.json();
-        // Convert 999999999 sentinel values to Infinity for bracket calculations
         convertSentinelsToInfinity(TAX_DATA);
         console.log('Tax brackets loaded for years:', Object.keys(TAX_DATA.federal));
         console.log('State tax data loaded for years:', Object.keys(TAX_DATA.state));
@@ -250,40 +257,29 @@ async function loadTaxBrackets() {
   console.warn('Failed to load taxBrackets.json - using hardcoded 2026 federal fallback');
 }
 
-// Convert 999999999 values to Infinity throughout the tax data
 function convertSentinelsToInfinity(data) {
   if (Array.isArray(data)) {
     for (let i = 0; i < data.length; i++) {
-      if (data[i] === 999999999) {
-        data[i] = Infinity;
-      } else if (typeof data[i] === 'object') {
-        convertSentinelsToInfinity(data[i]);
-      }
+      if (data[i] === 999999999) { data[i] = Infinity; }
+      else if (typeof data[i] === 'object') { convertSentinelsToInfinity(data[i]); }
     }
   } else if (typeof data === 'object' && data !== null) {
     for (const key of Object.keys(data)) {
-      if (data[key] === 999999999) {
-        data[key] = Infinity;
-      } else if (typeof data[key] === 'object') {
-        convertSentinelsToInfinity(data[key]);
-      }
+      if (data[key] === 999999999) { data[key] = Infinity; }
+      else if (typeof data[key] === 'object') { convertSentinelsToInfinity(data[key]); }
     }
   }
 }
 
-// Get the selected tax year (defaults to 2026)
 function getSelectedTaxYear() {
-  const el = document.getElementById('tax_year');
+  var el = document.getElementById('tax_year');
   return el ? el.value : '2026';
 }
 
-// Get the selected state code
 function getSelectedState() {
-  const el = document.getElementById('state');
+  var el = document.getElementById('state');
   return el ? el.value : '';
 }
-
-// --- Tax Data Accessor Functions ---
 
 function getFederalBrackets(year, filing) {
   if (!TAX_DATA || !TAX_DATA.federal[year]) return TAX_BRACKETS_2026_FALLBACK[filing] || TAX_BRACKETS_2026_FALLBACK.single;
@@ -315,8 +311,6 @@ function getSeTaxMultiplier(year) {
   if (!TAX_DATA || !TAX_DATA.federal[year]) return 0.9235;
   return TAX_DATA.federal[year].seTaxMultiplier || 0.9235;
 }
-
-// --- Federal Tax Calculations ---
 
 function calculateTax(taxableIncome, filing, year) {
   year = year || getSelectedTaxYear();
@@ -355,9 +349,7 @@ function getMarginalRate(income, filing, year) {
     if (income <= limit) return rate;
   }
   return 0.37;
-}
-
-// --- State Tax Calculation ---
+               }
 
 function calculateStateTax(taxableIncome, stateCode, year, filing) {
   if (!TAX_DATA || !stateCode || stateCode === '' || stateCode === 'none') return 0;
@@ -367,57 +359,40 @@ function calculateStateTax(taxableIncome, stateCode, year, filing) {
   if (!stateYearData) return 0;
   const stateData = stateYearData[stateCode];
   if (!stateData || stateData.noIncomeTax) return 0;
-
-  // Get the brackets for this filing status (fall back to single)
   const brackets = stateData.brackets ? (stateData.brackets[filing] || stateData.brackets.single) : null;
   if (!brackets || brackets.length === 0) return 0;
-
-  // Apply state standard deduction if available
   const stateSD = stateData.standardDeduction ? (stateData.standardDeduction[filing] || stateData.standardDeduction.single || 0) : 0;
   const stateTaxable = Math.max(0, taxableIncome - stateSD);
-
   let tax = 0, prev = 0;
   for (const [limit, rate] of brackets) {
     if (stateTaxable <= prev) break;
     tax += (Math.min(stateTaxable, limit) - prev) * rate;
     prev = limit;
   }
-
-  // Apply surcharges (CA Mental Health, MA Millionaire, etc.)
   if (stateData.mentalHealthSurcharge && taxableIncome > stateData.mentalHealthSurcharge.threshold) {
     tax += (taxableIncome - stateData.mentalHealthSurcharge.threshold) * stateData.mentalHealthSurcharge.rate;
   }
   if (stateData.millionaireSurcharge && taxableIncome > stateData.millionaireSurcharge.threshold) {
     tax += (taxableIncome - stateData.millionaireSurcharge.threshold) * stateData.millionaireSurcharge.rate;
   }
-
   return tax;
 }
 
-// Calculate WA capital gains tax (special case - no income tax but has cap gains tax)
 function calculateWaCapGainsTax(ltGains, stateCode, year) {
   if (stateCode !== 'WA' || !TAX_DATA) return 0;
   year = year || getSelectedTaxYear();
   const stateYearData = TAX_DATA.state[year];
   if (!stateYearData || !stateYearData.WA || !stateYearData.WA.capitalGainsTax) return 0;
   const cgt = stateYearData.WA.capitalGainsTax;
-  if (ltGains > cgt.threshold) {
-    return (ltGains - cgt.threshold) * cgt.rate;
-  }
+  if (ltGains > cgt.threshold) { return (ltGains - cgt.threshold) * cgt.rate; }
   return 0;
 }
 
-// --- Baseline & Strategy Tax Computation ---
-
 function computeBaselineTax(inputs) {
-  const fm = {
-    'Single': 'single', 'Married Filing Jointly': 'married_joint',
-    'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household'
-  };
+  const fm = { 'Single': 'single', 'Married Filing Jointly': 'married_joint', 'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household' };
   const f = fm[inputs.filing_status || 'Single'] || 'single';
   const year = inputs.tax_year || getSelectedTaxYear();
   const stateCode = inputs.state || getSelectedState();
-
   const w2 = parseFloat(inputs.w2_wages || 0);
   const se = parseFloat(inputs.se_income || 0);
   const biz = parseFloat(inputs.biz_revenue || 0);
@@ -425,13 +400,10 @@ function computeBaselineTax(inputs) {
   const div = parseFloat(inputs.dividend_income || 0);
   const stg = parseFloat(inputs.st_gains || 0);
   const ltg = parseFloat(inputs.lt_gains || 0);
-
   const ordinaryIncome = w2 + se + biz + rent + div + stg;
   const totalIncome = ordinaryIncome + ltg;
   const sd = getStandardDeduction(year, f);
   const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
-
-  // Federal tax
   let federalTax = calculateTax(taxableOrdinary, f, year);
   federalTax += calculateLtcgTax(ltg, taxableOrdinary, f, year);
   if (se > 0) federalTax += se * getSeTaxMultiplier(year) * getSeTaxRate(year);
@@ -439,35 +411,17 @@ function computeBaselineTax(inputs) {
   if (totalIncome > niitThreshold) {
     federalTax += Math.min(div + ltg + stg + rent, totalIncome - niitThreshold) * 0.038;
   }
-
-  // State tax
   let stateTax = calculateStateTax(ordinaryIncome, stateCode, year, f);
   stateTax += calculateWaCapGainsTax(ltg, stateCode, year);
-
   const totalTax = federalTax + stateTax;
-
-  return {
-    tax: Math.round(totalTax),
-    federalTax: Math.round(federalTax),
-    stateTax: Math.round(stateTax),
-    totalIncome: Math.round(totalIncome),
-    ordinaryIncome: Math.round(ordinaryIncome),
-    taxableOrdinary: Math.round(taxableOrdinary),
-    filing: f,
-    year: year,
-    state: stateCode
-  };
+  return { tax: Math.round(totalTax), federalTax: Math.round(federalTax), stateTax: Math.round(stateTax), totalIncome: Math.round(totalIncome), ordinaryIncome: Math.round(ordinaryIncome), taxableOrdinary: Math.round(taxableOrdinary), filing: f, year: year, state: stateCode };
 }
 
-function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset) {
-  const fm = {
-    'Single': 'single', 'Married Filing Jointly': 'married_joint',
-    'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household'
-  };
+function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAlloc) {
+  const fm = { 'Single': 'single', 'Married Filing Jointly': 'married_joint', 'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household' };
   const f = fm[inputs.filing_status || 'Single'] || 'single';
   const year = inputs.tax_year || getSelectedTaxYear();
   const stateCode = inputs.state || getSelectedState();
-
   const w2 = parseFloat(inputs.w2_wages || 0);
   const se = parseFloat(inputs.se_income || 0);
   const biz = parseFloat(inputs.biz_revenue || 0);
@@ -476,56 +430,77 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset) {
   const stg = parseFloat(inputs.st_gains || 0);
   const ltg = parseFloat(inputs.lt_gains || 0);
 
-  let remainingLoss = totalSTLosses;
-  let adjStg = stg;
-  let adjLtg = ltg;
+  // Delphi adjustments
+  var delphiOrdinaryOffset = 0;
+  var delphiSTLoss = 0;
+  var delphiLTCG = 0;
+  if (delphiAlloc) {
+    delphiOrdinaryOffset = Math.abs(delphiAlloc.ordinaryIncomeExpense || 0);
+    delphiSTLoss = Math.abs(delphiAlloc.shortTermCapitalGainLoss || 0);
+    delphiLTCG = delphiAlloc.longTermCapitalGainLoss || 0;
+  }
 
+  let remainingLoss = totalSTLosses + delphiSTLoss;
+  let adjStg = stg;
+  let adjLtg = ltg + delphiLTCG;
   const stOffset = Math.min(remainingLoss, adjStg);
   adjStg -= stOffset;
   remainingLoss -= stOffset;
-
-  const ltOffset = Math.min(remainingLoss, adjLtg);
+  const ltOffset = Math.min(remainingLoss, Math.max(0, adjLtg));
   adjLtg -= ltOffset;
   remainingLoss -= ltOffset;
-
   const ordinaryOffset = Math.min(remainingLoss, 3000);
   remainingLoss -= ordinaryOffset;
-
   const ogOffset = oilGasOffset || 0;
-
-  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset;
-  const totalIncome = ordinaryIncome + adjLtg;
+  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset - delphiOrdinaryOffset;
+  const totalIncome = ordinaryIncome + Math.max(0, adjLtg);
   const sd = getStandardDeduction(year, f);
   const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
-
   let federalTax = calculateTax(taxableOrdinary, f, year);
-  federalTax += calculateLtcgTax(adjLtg, taxableOrdinary, f, year);
+  federalTax += calculateLtcgTax(Math.max(0, adjLtg), taxableOrdinary, f, year);
   if (se > 0) federalTax += se * getSeTaxMultiplier(year) * getSeTaxRate(year);
   const niitThreshold = getNiitThreshold(year, f);
-  const niitIncome = ordinaryIncome + adjLtg;
+  const niitIncome = ordinaryIncome + Math.max(0, adjLtg);
   if (niitIncome > niitThreshold) {
-    federalTax += Math.min(div + adjLtg + adjStg + rent, niitIncome - niitThreshold) * 0.038;
+    federalTax += Math.min(div + Math.max(0, adjLtg) + adjStg + rent, niitIncome - niitThreshold) * 0.038;
   }
-
   let stateTax = calculateStateTax(ordinaryIncome, stateCode, year, f);
-  stateTax += calculateWaCapGainsTax(adjLtg, stateCode, year);
-
+  stateTax += calculateWaCapGainsTax(Math.max(0, adjLtg), stateCode, year);
   const totalTax = federalTax + stateTax;
+  return { tax: Math.round(totalTax), federalTax: Math.round(federalTax), stateTax: Math.round(stateTax), totalIncome: Math.round(totalIncome), carryForwardLoss: Math.round(remainingLoss) };
+}
 
+// ================================================================
+// SECTION 3: SOLVER FRAMEWORK (Brooklyn + Delphi + Oil & Gas)
+// ================================================================
+
+// Brookhaven Fee Configuration (adjustable)
+const BROOKHAVEN_FEES = {
+  flatFee: 45000,
+  quarterlyFee: 2000,
+  annualQuarterlyTotal: 8000
+};
+
+function computeBrookhavenFees(implementationDate) {
+  var flat = BROOKHAVEN_FEES.flatFee;
+  var annual = BROOKHAVEN_FEES.annualQuarterlyTotal;
+  // Pro-rata: remaining time in year from implementation date
+  var fraction = 1;
+  if (implementationDate) {
+    var impl = new Date(implementationDate);
+    var yearEnd = new Date(impl.getFullYear(), 11, 31);
+    var yearStart = new Date(impl.getFullYear(), 0, 1);
+    var msInYear = yearEnd - yearStart;
+    var remaining = yearEnd - impl;
+    fraction = Math.max(0, Math.min(1, remaining / msInYear));
+  }
+  var proRataQuarterly = Math.round(annual * fraction);
   return {
-    tax: Math.round(totalTax),
-    federalTax: Math.round(federalTax),
-    stateTax: Math.round(stateTax),
-    totalIncome: Math.round(totalIncome),
-    carryForwardLoss: Math.round(remainingLoss)
+    flatFee: flat,
+    quarterlyFee: proRataQuarterly,
+    totalFee: flat + proRataQuarterly
   };
 }
-// ================================================================
-// ================================================================
-
-// ================================================================
-// SECTION 3: SOLVER FRAMEWORK (Brooklyn + Oil & Gas)
-// ================================================================
 
 function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, maxLeverage, implementationDate) {
   const baseline = computeBaselineTax(inputs);
@@ -533,48 +508,92 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   let bestAllocation = [];
   let bestLosses = 0;
   let bestOilGasOffset = 0;
+  let bestDelphiAlloc = null;
 
   const ogMaxInvest = parseFloat(inputs.oil_gas_max || 0);
   const ogRate = parseFloat(inputs.oil_gas_rate || 0.95);
 
-  const strategies = enabledStrategies.filter(s => {
-    const strat = BROOKLYN_STRATEGIES[s.key];
-    return strat != null;
+  const strategies = enabledStrategies.filter(function(s) {
+    return BROOKLYN_STRATEGIES[s.key] != null;
   });
 
   const steps = 20;
   const ogSteps = 10;
+  const delphiSteps = 5;
 
-  for (const s of strategies) {
-    const strat = BROOKLYN_STRATEGIES[s.key];
+  // Determine eligible Delphi classes
+  var delphiClasses = [];
+  if (availableCapital >= 5000000) delphiClasses.push('classA');
+  if (availableCapital >= 1000000) delphiClasses.push('classB');
+
+  // Helper to try a combination and track the best
+  function tryCombo(brooklynKey, brooklynInvest, lev, ogInvest, delphiClass, delphiInvest) {
+    var totalUsed = brooklynInvest + ogInvest + delphiInvest;
+    if (totalUsed > availableCapital + 1) return; // tolerance
+
+    var losses = brooklynInvest > 0 && brooklynKey ? computeBrooklynLoss(brooklynKey, lev, brooklynInvest, implementationDate) : 0;
+    var ogOffset = ogInvest * ogRate;
+    var dAlloc = delphiInvest > 0 && delphiClass ? computeDelphiAllocation(delphiClass, delphiInvest, implementationDate) : null;
+
+    var result = computeTaxAfterStrategies(inputs, losses, ogOffset, dAlloc);
+    if (result.tax < bestTax || (result.tax === bestTax && lev < (bestAllocation.length > 0 ? bestAllocation[0].leverage : 999))) {
+      bestTax = result.tax;
+      bestAllocation = [{
+        key: brooklynKey,
+        leverage: lev,
+        investment: brooklynInvest,
+        losses: losses,
+        oilGasInvestment: ogInvest,
+        oilGasOffset: ogOffset,
+        delphiClass: delphiClass,
+        delphiInvestment: delphiInvest,
+        delphiAllocation: dAlloc
+      }];
+      bestLosses = losses;
+      bestOilGasOffset = ogOffset;
+      bestDelphiAlloc = dAlloc;
+    }
+  }
+
+  // Iterate Brooklyn strategies
+  for (var si = 0; si < strategies.length; si++) {
+    var s = strategies[si];
+    var strat = BROOKLYN_STRATEGIES[s.key];
     if (!strat) continue;
-    const maxBrooklyn = Math.min(availableCapital, s.maxInvestment || availableCapital);
+    var maxBrooklyn = Math.min(availableCapital, s.maxInvestment || availableCapital);
+    var lev = s.customLeverage || maxLeverage || 0.3;
 
-    for (let bStep = 0; bStep <= steps; bStep++) {
-      const brooklynInvest = (maxBrooklyn / steps) * bStep;
-      const lev = s.customLeverage || maxLeverage || 0.3;
-      const leverageMinInvestment = getMinInvestmentForLeverage(s.key, lev);
+    for (var bStep = 0; bStep <= steps; bStep++) {
+      var brooklynInvest = (maxBrooklyn / steps) * bStep;
+      var leverageMinInvestment = getMinInvestmentForLeverage(s.key, lev);
       if (brooklynInvest > 0 && brooklynInvest < leverageMinInvestment) continue;
 
-      const losses = computeBrooklynLoss(s.key, lev, brooklynInvest, implementationDate);
+      var remainingAfterBrooklyn = availableCapital - brooklynInvest;
 
-      const remainingForOG = Math.min(ogMaxInvest, availableCapital - brooklynInvest);
-      const ogMax = Math.max(0, remainingForOG);
-      const ogStepSize = ogMax > 0 ? ogMax / ogSteps : 0;
+      // O&G allocation
+      var ogMax = Math.min(ogMaxInvest, remainingAfterBrooklyn);
+      var ogMaxSafe = Math.max(0, ogMax);
+      var ogStepSize = ogMaxSafe > 0 ? ogMaxSafe / ogSteps : 0;
 
-      for (let ogStep = 0; ogStep <= (ogMax > 0 ? ogSteps : 0); ogStep++) {
-        const ogInvest = ogStepSize * ogStep;
-        const ogOffset = ogInvest * ogRate;
+      for (var ogStep = 0; ogStep <= (ogMaxSafe > 0 ? ogSteps : 0); ogStep++) {
+        var ogInvest = ogStepSize * ogStep;
+        var remainingAfterBoth = remainingAfterBrooklyn - ogInvest;
 
-        const result = computeTaxAfterStrategies(inputs, losses, ogOffset);
-        if (result.tax < bestTax) {
-          bestTax = result.tax;
-          bestAllocation = [{
-            key: s.key, leverage: lev, investment: brooklynInvest,
-            losses: losses, oilGasInvestment: ogInvest, oilGasOffset: ogOffset
-          }];
-          bestLosses = losses;
-          bestOilGasOffset = ogOffset;
+        // Try without Delphi
+        tryCombo(s.key, brooklynInvest, lev, ogInvest, null, 0);
+
+        // Try with Delphi
+        for (var di = 0; di < delphiClasses.length; di++) {
+          var dc = delphiClasses[di];
+          var delphiMin = getDelphiMinInvestment(dc);
+          var delphiMax = Math.max(0, remainingAfterBoth);
+          if (delphiMax < delphiMin) continue;
+
+          var dStepSize = (delphiMax - delphiMin) / delphiSteps;
+          for (var dStep = 0; dStep <= delphiSteps; dStep++) {
+            var dInvest = delphiMin + dStepSize * dStep;
+            tryCombo(s.key, brooklynInvest, lev, ogInvest, dc, dInvest);
+          }
         }
       }
     }
@@ -582,54 +601,71 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
 
   // Oil & Gas only (no Brooklyn)
   if (ogMaxInvest > 0) {
-    const ogOnlyMax = Math.min(ogMaxInvest, availableCapital);
-    const ogOnlyStep = ogOnlyMax / ogSteps;
-    for (let ogStep = 1; ogStep <= ogSteps; ogStep++) {
-      const ogInvest = ogOnlyStep * ogStep;
-      const ogOffset = ogInvest * ogRate;
-      const result = computeTaxAfterStrategies(inputs, 0, ogOffset);
-      if (result.tax < bestTax) {
-        bestTax = result.tax;
-        bestAllocation = [{
-          key: null, leverage: 0, investment: 0, losses: 0,
-          oilGasInvestment: ogInvest, oilGasOffset: ogOffset
-        }];
-        bestLosses = 0;
-        bestOilGasOffset = ogOffset;
+    var ogOnlyMax = Math.min(ogMaxInvest, availableCapital);
+    var ogOnlyStep = ogOnlyMax / ogSteps;
+    for (var ogStep2 = 1; ogStep2 <= ogSteps; ogStep2++) {
+      var ogInvest2 = ogOnlyStep * ogStep2;
+      var remainOG = availableCapital - ogInvest2;
+
+      // O&G only, no Delphi
+      tryCombo(null, 0, 0, ogInvest2, null, 0);
+
+      // O&G + Delphi
+      for (var di2 = 0; di2 < delphiClasses.length; di2++) {
+        var dc2 = delphiClasses[di2];
+        var dMin2 = getDelphiMinInvestment(dc2);
+        var dMax2 = Math.max(0, remainOG);
+        if (dMax2 < dMin2) continue;
+        var dStep2 = (dMax2 - dMin2) / delphiSteps;
+        for (var ds2 = 0; ds2 <= delphiSteps; ds2++) {
+          tryCombo(null, 0, 0, ogInvest2, dc2, dMin2 + dStep2 * ds2);
+        }
       }
+    }
+  }
+
+  // Delphi only (no Brooklyn, no O&G)
+  for (var di3 = 0; di3 < delphiClasses.length; di3++) {
+    var dc3 = delphiClasses[di3];
+    var dMin3 = getDelphiMinInvestment(dc3);
+    var dMax3 = availableCapital;
+    if (dMax3 < dMin3) continue;
+    var dStep3 = (dMax3 - dMin3) / delphiSteps;
+    for (var ds3 = 0; ds3 <= delphiSteps; ds3++) {
+      tryCombo(null, 0, 0, 0, dc3, dMin3 + dStep3 * ds3);
     }
   }
 
   // Minimum Leverage Optimization
   if (bestAllocation.length > 0 && bestAllocation[0].key) {
-    const bestEntry = bestAllocation[0];
-    const targetTax = bestTax;
-    let minLev = bestEntry.leverage;
-    let minLevAllocation = bestEntry;
-    const leverageStep = 0.05;
-    for (let tryLev = bestEntry.leverage - leverageStep; tryLev >= 0; tryLev = Math.round((tryLev - leverageStep) * 100) / 100) {
-      const leverageMinInvestment = getMinInvestmentForLeverage(bestEntry.key, tryLev);
-      if (bestEntry.investment > 0 && bestEntry.investment < leverageMinInvestment) continue;
-      const losses = computeBrooklynLoss(bestEntry.key, tryLev, bestEntry.investment, implementationDate);
-      const result = computeTaxAfterStrategies(inputs, losses, bestEntry.oilGasOffset || 0);
-      if (result.tax <= targetTax + 100) {
+    var bestEntry = bestAllocation[0];
+    var targetTax = bestTax;
+    var minLev = bestEntry.leverage;
+    var minLevAllocation = Object.assign({}, bestEntry);
+    var leverageStep = 0.05;
+    for (var tryLev = bestEntry.leverage - leverageStep; tryLev >= 0; tryLev = Math.round((tryLev - leverageStep) * 100) / 100) {
+      var levMinInv = getMinInvestmentForLeverage(bestEntry.key, tryLev);
+      if (bestEntry.investment > 0 && bestEntry.investment < levMinInv) continue;
+      var losses2 = computeBrooklynLoss(bestEntry.key, tryLev, bestEntry.investment, implementationDate);
+      var result2 = computeTaxAfterStrategies(inputs, losses2, bestEntry.oilGasOffset || 0, bestEntry.delphiAllocation || null);
+      if (result2.tax <= targetTax + 100) {
         minLev = tryLev;
         minLevAllocation = {
           key: bestEntry.key, leverage: tryLev, investment: bestEntry.investment,
-          losses: losses, oilGasInvestment: bestEntry.oilGasInvestment || 0, oilGasOffset: bestEntry.oilGasOffset || 0
+          losses: losses2, oilGasInvestment: bestEntry.oilGasInvestment || 0,
+          oilGasOffset: bestEntry.oilGasOffset || 0,
+          delphiClass: bestEntry.delphiClass, delphiInvestment: bestEntry.delphiInvestment || 0,
+          delphiAllocation: bestEntry.delphiAllocation
         };
-      } else {
-        break;
-      }
+      } else { break; }
     }
     if (minLev < bestEntry.leverage) {
       bestAllocation[0].minLeverageOption = minLevAllocation;
     }
   }
 
-  const totalInvestment = bestAllocation.length > 0
-    ? (bestAllocation[0].investment || 0) + (bestAllocation[0].oilGasInvestment || 0)
-    : 0;
+  var a0 = bestAllocation.length > 0 ? bestAllocation[0] : null;
+  var totalInvestment = a0 ? (a0.investment || 0) + (a0.oilGasInvestment || 0) + (a0.delphiInvestment || 0) : 0;
 
   return {
     baselineTax: baseline.tax,
@@ -640,6 +676,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     allocation: bestAllocation,
     totalLosses: bestLosses,
     totalOilGasOffset: bestOilGasOffset,
+    totalDelphiAlloc: bestDelphiAlloc,
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
@@ -648,7 +685,6 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
 }
 
 // ================================================================
-// ================================================================
 // SECTION 4: CONDITIONAL QUESTIONNAIRE & UI
 // ================================================================
 
@@ -656,21 +692,24 @@ const questions = {
   income: [
     {
       id: 'w2_employee', text: 'Are you a W-2 employee?', trigger: 'w2_employee',
-      followUp: [
-        {
-          id: 'w2_amount', text: 'How much do you earn from W-2 jobs?', trigger: 'w2_employee',
-          inputField: { type: 'number', placeholder: 'e.g. 150,000', label: 'Annual W-2 Income ($)', mapTo: 'w2_wages' }
-        }
-      ]
+      followUp: [{
+        id: 'w2_amount', text: 'How much do you earn from W-2 jobs?', trigger: 'w2_employee',
+        inputField: { type: 'number', placeholder: 'e.g. 150,000', label: 'Annual W-2 Income ($)', mapTo: 'w2_wages' }
+      }]
     },
     {
       id: 'multiple_income', text: 'Do you have multiple sources of income?', trigger: 'multiple_income',
       followUp: [
-        { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property', inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Annual Rental Income ($)', mapTo: 'rental_income' } },
-        { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business', inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Distributions ($)', mapTo: 'biz_revenue' } },
-        { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed', inputField: { type: 'number', placeholder: 'e.g. 75,000', label: 'Annual Self-Employment Income ($)', mapTo: 'se_income' } },
-        { id: 'has_retirement_income', text: 'Are you receiving retirement benefits?', trigger: 'retirement_income', inputField: { type: 'number', placeholder: 'e.g. 40,000', label: 'Annual Retirement Income ($)', mapTo: 'retirement_distributions' } },
-        { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income', inputField: { type: 'number', placeholder: 'e.g. 25,000', label: 'Annual Dividend Income ($)', mapTo: 'dividend_income' } }
+        { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property',
+          inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Annual Rental Income ($)', mapTo: 'rental_income' } },
+        { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business',
+          inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Distributions ($)', mapTo: 'biz_revenue' } },
+        { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed',
+          inputField: { type: 'number', placeholder: 'e.g. 75,000', label: 'Annual Self-Employment Income ($)', mapTo: 'se_income' } },
+        { id: 'has_retirement_income', text: 'Are you receiving retirement benefits?', trigger: 'retirement_income',
+          inputField: { type: 'number', placeholder: 'e.g. 40,000', label: 'Annual Retirement Income ($)', mapTo: 'retirement_distributions' } },
+        { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income',
+          inputField: { type: 'number', placeholder: 'e.g. 25,000', label: 'Annual Dividend Income ($)', mapTo: 'dividend_income' } }
       ]
     },
     { id: 'variable_income', text: 'Does your income vary significantly year to year?', trigger: 'variable_income' }
@@ -681,16 +720,30 @@ const questions = {
   ],
   brooklyn: [
     { id: 'advisor_managed', text: 'Will your account be advisor managed or Brooklyn managed? (suggested: Brooklyn managed)', trigger: 'advisor_managed' },
-    { id: 'beta_selection_q', text: 'What beta selection would you like?', trigger: 'beta_chosen', showWhen: function(a) { return a.advisor_managed === false; }, choiceType: 'select', choices: [{ label: 'Beta 1 (S&P 500)', value: '1' }, { label: 'Beta 1.5 (Nasdaq)', value: '1.5' }, { label: 'Beta 0 (Zero Beta)', value: '0' }] },
+    {
+      id: 'beta_selection_q', text: 'What beta selection would you like?', trigger: 'beta_chosen',
+      showWhen: function(a) { return a.advisor_managed === false; },
+      choiceType: 'select',
+      choices: [
+        { label: 'Beta 1 (S&P 500)', value: '1' },
+        { label: 'Beta 0.5 (CASH/S&P 500)', value: '0.5' },
+        { label: 'Beta 0 (Zero Beta)', value: '0' }
+      ]
+    },
     { id: 'custom_leverage', text: 'Are you interested in a custom leverage structure?', trigger: 'custom_leverage' },
-    { id: 'preset_leverage_q', text: 'Select a pre-set leverage strategy:', trigger: 'preset_chosen', showWhen: function(a) { return a.custom_leverage === false; }, choiceType: 'leverage_preset' }
+    {
+      id: 'preset_leverage_q', text: 'Select a pre-set leverage strategy:', trigger: 'preset_chosen',
+      showWhen: function(a) { return a.custom_leverage === false; },
+      choiceType: 'leverage_preset'
+    }
   ],
   oilgas: [
     { id: 'interested_oil_gas', text: 'Are you interested in oil & gas investments for income offset?', trigger: 'interested_oil_gas' }
   ],
   realestate: [
     { id: 'real_estate_sale', text: 'Are you planning to sell real estate this year?', trigger: 'real_estate_sale' },
-    { id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?', trigger: 'cost_segregation', showWhen: function(a) { return a.rental_property === true; } },
+    { id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?', trigger: 'cost_segregation',
+      showWhen: function(a) { return a.rental_property === true; } },
     { id: 'opportunity_zone', text: 'Are you interested in Opportunity Zone investments?', trigger: 'opportunity_zone' }
   ],
   retirement: [
@@ -699,9 +752,16 @@ const questions = {
     { id: 'max_401k', text: 'Are you maximizing your 401(k) contributions?', trigger: 'max_401k' }
   ],
   business: [
-    { id: 'business_owner', text: 'Do you own or operate a business?', trigger: 'has_business', followUp: [{ id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' }, { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }] },
-    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp', showWhen: function(a) { return a.has_business === true; } },
-    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership', showWhen: function(a) { return a.has_business === true; } }
+    { id: 'business_owner', text: 'Do you own or operate a business?', trigger: 'has_business',
+      followUp: [
+        { id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' },
+        { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }
+      ]
+    },
+    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp',
+      showWhen: function(a) { return a.has_business === true; } },
+    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership',
+      showWhen: function(a) { return a.has_business === true; } }
   ]
 };
 
@@ -716,7 +776,7 @@ let strategiesData = [];
 // --- Accounting Format Helper ---
 function formatCurrency(value) {
   if (!value && value !== 0) return '';
-  var num = typeof value === "string" ? parseFloat(value.replace(/[^0-9.-]/g, "")) : value;
+  var num = typeof value === 'string' ? parseFloat(value.replace(/[^0-9.-]/g, '')) : value;
   if (isNaN(num)) return '';
   return '$' + num.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
@@ -729,7 +789,9 @@ function setupCurrencyInput(input, mapTo) {
   input.addEventListener('blur', function() {
     var raw = parseCurrencyInput(this.value);
     var num = parseFloat(raw);
-    if (!isNaN(num) && num > 0) { this.value = formatCurrency(num); }
+    if (!isNaN(num) && num > 0) {
+      this.value = formatCurrency(num);
+    }
     if (mapTo) syncToPage2(mapTo, raw);
   });
   input.addEventListener('focus', function() {
@@ -738,6 +800,31 @@ function setupCurrencyInput(input, mapTo) {
   });
   input.addEventListener('input', function() {
     if (mapTo) syncToPage2(mapTo, parseCurrencyInput(this.value));
+  });
+}
+
+// Setup currency formatting on Page 2 number inputs
+function setupPage2CurrencyInputs() {
+  var currencyFields = ['w2_wages','se_income','biz_revenue','rental_income','dividend_income',
+    'retirement_distributions','st_gains','lt_gains','unrealized_losses','portfolio_value',
+    'property_values','charitable','salt','retirement_contrib','available_capital','oil_gas_max'];
+  currencyFields.forEach(function(fieldId) {
+    var el = document.getElementById(fieldId);
+    if (!el || el.dataset.currencySetup) return;
+    el.dataset.currencySetup = 'true';
+    el.type = 'text';
+    el.addEventListener('blur', function() {
+      var raw = parseCurrencyInput(this.value);
+      var num = parseFloat(raw);
+      if (!isNaN(num) && num > 0) {
+        this.value = formatCurrency(num);
+      }
+    });
+    el.addEventListener('focus', function() {
+      var raw = parseCurrencyInput(this.value);
+      if (raw && raw !== '0') this.value = raw;
+      else this.value = '';
+    });
   });
 }
 
@@ -832,7 +919,7 @@ function renderInlineInput(card, q) {
   inputDiv.appendChild(label);
   inputDiv.appendChild(input);
   card.appendChild(inputDiv);
-}
+      }
 
 function renderSelectQuestion(container, q, section) {
   var card = document.createElement('div');
@@ -862,6 +949,8 @@ function renderSelectQuestion(container, q, section) {
     userAnswers[q.trigger] = !!this.value;
     var betaEl = document.getElementById('beta_selection');
     if (betaEl && this.value) betaEl.value = this.value;
+    // Auto-fill max leverage from strategy data
+    autoFillLeverage();
     rebuildConditionalSections();
     buildSectionQuestions('brooklyn');
     updateProgress();
@@ -904,10 +993,37 @@ function renderPresetQuestion(container, q, section) {
     userAnswers[q.trigger] = !!this.value;
     var presetEl = document.getElementById('brooklyn_preset');
     if (presetEl && this.value) presetEl.value = this.value;
+    // Auto-fill leverage on Page 2
+    autoFillLeverage();
     updateProgress();
   };
   card.appendChild(sel);
   container.appendChild(card);
+}
+
+// Auto-fill leverage on Page 2 based on strategy selections
+function autoFillLeverage() {
+  var beta = userAnswers['_select_beta_selection_q'] || '1';
+  var isAdvisor = userAnswers.advisor_managed === true;
+  var stratKey = getBrooklynStrategyKey(isAdvisor, parseFloat(beta));
+  var strat = BROOKLYN_STRATEGIES[stratKey];
+
+  if (userAnswers.custom_leverage === true) return; // User wants custom
+
+  var presetLabel = userAnswers['_preset_leverage'];
+  if (presetLabel && strat) {
+    var dp = strat.dataPoints.find(function(p) { return p.label === presetLabel; });
+    if (dp) {
+      var levEl = document.getElementById('max_leverage');
+      if (levEl) levEl.value = dp.leverage;
+      var customEl = document.getElementById('custom_leverage_value');
+      if (customEl) customEl.value = dp.leverage;
+    }
+  } else if (strat && strat.dataPoints.length > 0) {
+    // Default to first preset
+    var levEl2 = document.getElementById('max_leverage');
+    if (levEl2 && !levEl2.value) levEl2.value = strat.dataPoints[0].leverage;
+  }
 }
 
 function buildSectionQuestions(section) {
@@ -921,6 +1037,7 @@ function buildSectionQuestions(section) {
     else { renderQuestion(container, q, section); }
   });
 }
+
 function setAnswer(questionId, trigger, value, btn, questionObj, section) {
   userAnswers[trigger] = value;
   var card = btn.closest('.question-card') || btn.closest('.follow-up-question');
@@ -959,13 +1076,18 @@ function rebuildConditionalSections() {
 
 function syncToPage2(fieldId, value) {
   var el = document.getElementById(fieldId);
-  if (el) { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }
+  if (el) {
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
 }
 
 function syncPage2Visibility() {
   var fieldVisibility = {
-    w2_employee: ['w2_wages'], self_employed: ['se_income'],
-    has_business: ['biz_revenue'], rental_property: ['rental_income'],
+    w2_employee: ['w2_wages'],
+    self_employed: ['se_income'],
+    has_business: ['biz_revenue'],
+    rental_property: ['rental_income'],
     dividend_income: ['dividend_income']
   };
   Object.entries(fieldVisibility).forEach(function(entry) {
@@ -993,7 +1115,8 @@ function updateProgress() {
   Object.values(questions).forEach(function(arr) {
     arr.forEach(function(q) {
       if (q.showWhen && !q.showWhen(userAnswers)) return;
-      total++; if (userAnswers[q.trigger] !== undefined) answered++;
+      total++;
+      if (userAnswers[q.trigger] !== undefined) answered++;
     });
   });
   var pct = total > 0 ? Math.round(answered / total * 100) : 0;
@@ -1023,18 +1146,25 @@ function updateBrooklynUI() {
 
 function getFormInputs() {
   var fields = ['w2_wages','se_income','biz_revenue','rental_income',
-    'dividend_income','st_gains','lt_gains','unrealized_losses','portfolio_value',
+    'dividend_income','retirement_distributions','st_gains','lt_gains','unrealized_losses','portfolio_value',
     'property_values','charitable','salt','retirement_contrib','taxpayer_age','state',
     'implementation_date','available_capital','max_leverage','beta_selection',
     'brooklyn_preset','custom_leverage_value','filing_status','tax_year',
-    'oil_gas_max','oil_gas_rate'];
+    'oil_gas_max','oil_gas_rate','months_remaining'];
   var inp = {};
-  fields.forEach(function(f) { var el = document.getElementById(f); if (el) inp[f] = el.value; });
+  fields.forEach(function(f) {
+    var el = document.getElementById(f);
+    if (el) {
+      // Strip currency formatting for numeric fields
+      var val = el.value;
+      if (el.type === 'text' && val && val.indexOf('$') >= 0) {
+        val = parseCurrencyInput(val);
+      }
+      inp[f] = val;
+    }
+  });
   return inp;
 }
-
-function getSelectedTaxYear() { var el = document.getElementById('tax_year'); return el ? el.value : '2026'; }
-function getSelectedState() { var el = document.getElementById('state'); return el ? el.value : ''; }
 
 function calculateStrategies() {
   var inp = getFormInputs();
@@ -1046,21 +1176,31 @@ function calculateStrategies() {
   var availCap = parseFloat(inp.available_capital || 0);
   var customLev = userAnswers.custom_leverage;
   var leverage = 0.3;
-  if (customLev && inp.custom_leverage_value) { leverage = parseFloat(inp.custom_leverage_value); }
-  else if (inp.brooklyn_preset) {
-    var presetMap = { 'Long-Only': 0, '100/100': 1.0, '130/30': 0.3, '145/45': 0.45, '160/60': 0.6, '200/100': 1.0, '225/125': 1.25, '250/150': 1.5, '275/275': 2.75, '325/225': 2.25 };
+  if (customLev && inp.custom_leverage_value) {
+    leverage = parseFloat(inp.custom_leverage_value);
+  } else if (inp.brooklyn_preset) {
+    var presetMap = {
+      'Long-Only': 0, '100/100': 1.0, '130/30': 0.3, '145/45': 0.45,
+      '160/60': 0.6, '200/100': 1.0, '225/125': 1.25, '250/150': 1.5,
+      '275/275': 2.75, '325/225': 2.25, '150/150': 1.5, '200/200': 2.0
+    };
     leverage = presetMap[inp.brooklyn_preset] || 0.3;
   }
   var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
   var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
   displayResults(result, baseline, inp);
 }
+
 function displayResults(result, baseline, inputs) {
   var a = result.allocation.length > 0 ? result.allocation[0] : null;
   var strat = a && a.key ? BROOKLYN_STRATEGIES[a.key] : null;
   var effRate = result.totalIncome > 0 ? (result.baselineTax / result.totalIncome * 100).toFixed(1) : '0';
   var newRate = result.totalIncome > 0 ? (result.optimizedTax / result.totalIncome * 100).toFixed(1) : '0';
-  var totalInvested = a ? (a.investment || 0) + (a.oilGasInvestment || 0) : 0;
+  var totalInvested = a ? (a.investment || 0) + (a.oilGasInvestment || 0) + (a.delphiInvestment || 0) : 0;
+
+  // Compute fees
+  var implDate = inputs.implementation_date || new Date().toISOString().split('T')[0];
+  var fees = computeBrookhavenFees(implDate);
 
   var page3 = document.getElementById('page3');
   if (!page3) return;
@@ -1093,21 +1233,36 @@ function displayResults(result, baseline, inputs) {
   var stratRows = '';
 
   if (a && a.key && strat && a.investment > 0) {
-    var dp = strat.dataPoints ? strat.dataPoints.find(function(p) { return p.leverage === a.leverage; }) : null;
+    var leverageLabel = getLeverageLabel(a.key, a.leverage);
     stratRows += '<tr class="strategy-header"><td colspan="2">Brooklyn Strategy: ' + strat.name + '</td></tr>';
-    stratRows += '<tr><td>Leverage</td><td>' + (dp ? dp.longPct + '/' + dp.shortPct : 'Custom') + '</td></tr>';
+    stratRows += '<tr><td>Leverage</td><td>' + leverageLabel + '</td></tr>';
     stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.investment) + '</td></tr>';
     stratRows += '<tr><td>Short-Term Losses Generated</td><td>' + formatCurrency(a.losses) + '</td></tr>';
   }
+
+  if (a && a.delphiInvestment > 0 && a.delphiClass) {
+    var delphiFund = DELPHI_STRATEGIES[a.delphiClass];
+    var dAlloc = a.delphiAllocation;
+    stratRows += '<tr class="strategy-header"><td colspan="2">Delphi Strategy: ' + (delphiFund ? delphiFund.name : a.delphiClass) + '</td></tr>';
+    stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.delphiInvestment) + '</td></tr>';
+    if (dAlloc) {
+      stratRows += '<tr><td>Ordinary Income Offset</td><td>' + formatCurrency(Math.abs(dAlloc.ordinaryIncomeExpense)) + '</td></tr>';
+      stratRows += '<tr><td>ST Loss Generated</td><td>' + formatCurrency(Math.abs(dAlloc.shortTermCapitalGainLoss)) + '</td></tr>';
+      stratRows += '<tr><td>LT Capital Gain</td><td>' + formatCurrency(dAlloc.longTermCapitalGainLoss) + '</td></tr>';
+    }
+  }
+
   if (a && a.oilGasInvestment > 0) {
     stratRows += '<tr class="strategy-header"><td colspan="2">Oil & Gas Strategy</td></tr>';
     stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.oilGasInvestment) + '</td></tr>';
     stratRows += '<tr><td>Ordinary Income Offset (' + (parseFloat(inputs.oil_gas_rate || 0.95) * 100).toFixed(0) + '%)</td><td>' + formatCurrency(a.oilGasOffset) + '</td></tr>';
   }
+
   var minLevRow = '';
   if (a && a.minLeverageOption) {
     var mlo = a.minLeverageOption;
-    minLevRow = '<tr class="alt-row"><td>Lower Leverage Alternative</td><td>' + (mlo.leverage * 100).toFixed(0) + '% leverage \u2014 same result within $100</td></tr>';
+    var mloLabel = getLeverageLabel(mlo.key, mlo.leverage);
+    minLevRow = '<tr class="alt-row"><td>Lower Leverage Alternative</td><td>' + mloLabel + ' \u2014 same result within $100</td></tr>';
   }
 
   t2.innerHTML = '<h3 class="table-title">With Tax Planning</h3>' +
@@ -1121,18 +1276,26 @@ function displayResults(result, baseline, inputs) {
     '</tbody></table>';
   page3.appendChild(t2);
 
-  // SUMMARY TABLE
+  // TABLE 3: RETURN ON PLANNING with fees
   var t3 = document.createElement('div');
   t3.className = 'results-table-section summary-section';
-  var roiPct = totalInvested > 0 ? ((result.savings / totalInvested) * 100).toFixed(1) : '0';
+  var totalFees = fees.totalFee;
+  var netSavings = result.savings - totalFees;
+  var roiPct = totalFees > 0 ? (result.savings / totalFees * 100).toFixed(1) : (result.savings > 0 ? '\u221e' : '0');
+
   t3.innerHTML = '<h3 class="table-title summary-title">Return on Planning</h3>' +
     '<table class="results-table summary-table"><tbody>' +
     '<tr><td>Tax Without Planning</td><td>' + formatCurrency(result.baselineTax) + '</td></tr>' +
     '<tr><td>Tax With Planning</td><td>' + formatCurrency(result.optimizedTax) + '</td></tr>' +
     '<tr class="savings-row"><td>Tax Savings</td><td>' + formatCurrency(result.savings) + '</td></tr>' +
-    '<tr><td>Strategy Fees</td><td>TBD</td></tr>' +
-    '<tr><td>Advisory Fees</td><td>TBD</td></tr>' +
-    '<tr class="total-row"><td>Return on Investment</td><td>' + roiPct + '%</td></tr>' +
+    '<tr class="spacer-row"><td colspan="2"></td></tr>' +
+    '<tr class="strategy-header"><td colspan="2">Fees</td></tr>' +
+    '<tr><td>Brookhaven Flat Fee</td><td>' + formatCurrency(fees.flatFee) + '</td></tr>' +
+    '<tr><td>Quarterly Fee (pro-rata)</td><td>' + formatCurrency(fees.quarterlyFee) + '</td></tr>' +
+    '<tr class="total-row"><td>Total Fees</td><td>' + formatCurrency(totalFees) + '</td></tr>' +
+    '<tr class="spacer-row"><td colspan="2"></td></tr>' +
+    '<tr class="savings-row"><td>Net Savings After Fees</td><td>' + formatCurrency(netSavings) + '</td></tr>' +
+    '<tr class="total-row"><td>Return on Investment (Savings / Fees)</td><td>' + roiPct + '%</td></tr>' +
     '</tbody></table>';
   page3.appendChild(t3);
 
@@ -1142,6 +1305,7 @@ function displayResults(result, baseline, inputs) {
   btnDiv.innerHTML = '<button class="btn btn-primary" onclick="calculateStrategies()">Recalculate</button><button class="btn btn-secondary" onclick="exportResults()">Export Report</button>';
   page3.appendChild(btnDiv);
 }
+
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
   document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
@@ -1150,7 +1314,10 @@ function showPage(pageId) {
   var ti = pageId === 'page1' ? 0 : pageId === 'page2' ? 1 : 2;
   var tabs = document.querySelectorAll('.nav-tab');
   if (tabs[ti]) tabs[ti].classList.add('active');
-  if (pageId === 'page2') { syncPage2Visibility(); }
+  if (pageId === 'page2') {
+    syncPage2Visibility();
+    setupPage2CurrencyInputs();
+  }
   if (pageId === 'page3') calculateStrategies();
 }
 
@@ -1165,6 +1332,7 @@ function exportResults() {
   var leverage = parseFloat(inp.custom_leverage_value || inp.max_leverage || 0.3);
   var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
   var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
+  var fees = computeBrookhavenFees(implDate);
   var year = result.year || getSelectedTaxYear();
   var state = result.state || getSelectedState();
   var rp = 'BROOKHAVEN TAX STRATEGY REPORT\n';
@@ -1183,18 +1351,29 @@ function exportResults() {
   rp += 'Optimized Tax: ' + formatCurrency(result.optimizedTax) + '\n';
   rp += 'Tax Savings: ' + formatCurrency(result.savings) + '\n';
   rp += 'ROI: ' + result.roi + '\n\n';
+  rp += 'FEES\n';
+  rp += '----\n';
+  rp += 'Flat Fee: ' + formatCurrency(fees.flatFee) + '\n';
+  rp += 'Quarterly (pro-rata): ' + formatCurrency(fees.quarterlyFee) + '\n';
+  rp += 'Total Fees: ' + formatCurrency(fees.totalFee) + '\n\n';
   rp += 'STRATEGIES APPLIED\n';
   rp += '------------------\n';
-  result.allocation.forEach(function(a) {
-    if (a.key) {
-      var strat = BROOKLYN_STRATEGIES[a.key];
-      rp += '  Brooklyn: ' + (strat ? strat.name : a.key) + '\n';
-      rp += '  Investment: ' + formatCurrency(a.investment) + '\n';
-      rp += '  Losses: ' + formatCurrency(a.losses) + '\n';
+  result.allocation.forEach(function(alloc) {
+    if (alloc.key) {
+      var st = BROOKLYN_STRATEGIES[alloc.key];
+      rp += '  Brooklyn: ' + (st ? st.name : alloc.key) + '\n';
+      rp += '    Leverage: ' + getLeverageLabel(alloc.key, alloc.leverage) + '\n';
+      rp += '    Investment: ' + formatCurrency(alloc.investment) + '\n';
+      rp += '    Losses: ' + formatCurrency(alloc.losses) + '\n';
     }
-    if (a.oilGasInvestment > 0) {
-      rp += '  Oil & Gas Investment: ' + formatCurrency(a.oilGasInvestment) + '\n';
-      rp += '  O&G Offset: ' + formatCurrency(a.oilGasOffset) + '\n';
+    if (alloc.delphiInvestment > 0) {
+      var df = DELPHI_STRATEGIES[alloc.delphiClass];
+      rp += '  Delphi: ' + (df ? df.name : alloc.delphiClass) + '\n';
+      rp += '    Investment: ' + formatCurrency(alloc.delphiInvestment) + '\n';
+    }
+    if (alloc.oilGasInvestment > 0) {
+      rp += '  Oil & Gas Investment: ' + formatCurrency(alloc.oilGasInvestment) + '\n';
+      rp += '    O&G Offset: ' + formatCurrency(alloc.oilGasOffset) + '\n';
     }
     rp += '\n';
   });
