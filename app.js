@@ -199,7 +199,7 @@ function getMinInvestmentForLeverage(strategyKey, leverage) {
   }
   const lowerMin = lower.minInvestment || strat.minInvestment || 0;
   const upperMin = upper.minInvestment || strat.minInvestment || 0;
-  return Math.max(lowerMin, upperMin);
+  if (leverage <= lower.leverage) return lowerMin; if (leverage >= upper.leverage) return upperMin; return upperMin;
 }
 
 // Helper: find leverage label from data points
