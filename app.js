@@ -648,37 +648,31 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
 }
 
 // ================================================================
+// ================================================================
 // SECTION 4: CONDITIONAL QUESTIONNAIRE & UI
 // ================================================================
 
 const questions = {
   income: [
     {
-      id: 'w2_employee',
-      text: 'Are you a W-2 employee?',
-      trigger: 'w2_employee',
+      id: 'w2_employee', text: 'Are you a W-2 employee?', trigger: 'w2_employee',
       followUp: [
         {
-          id: 'w2_amount',
-          text: 'How much do you earn from W-2 jobs?',
-          trigger: 'w2_employee',
-          inputField: { type: 'number', placeholder: 'e.g. 150000', label: 'Annual W-2 Income ($)', mapTo: 'w2_wages' }
+          id: 'w2_amount', text: 'How much do you earn from W-2 jobs?', trigger: 'w2_employee',
+          inputField: { type: 'number', placeholder: 'e.g. 150,000', label: 'Annual W-2 Income ($)', mapTo: 'w2_wages' }
         }
       ]
     },
     {
-      id: 'multiple_income',
-      text: 'Do you have multiple sources of income?',
-      trigger: 'multiple_income',
+      id: 'multiple_income', text: 'Do you have multiple sources of income?', trigger: 'multiple_income',
       followUp: [
-        { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property' },
-        { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business' },
-        { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed' },
-        { id: 'has_retirement_income', text: 'Are you receiving retirement benefits or distributions?', trigger: 'retirement_income' },
-        { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income' }
+        { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property', inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Annual Rental Income ($)', mapTo: 'rental_income' } },
+        { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business', inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Distributions ($)', mapTo: 'biz_revenue' } },
+        { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed', inputField: { type: 'number', placeholder: 'e.g. 75,000', label: 'Annual Self-Employment Income ($)', mapTo: 'se_income' } },
+        { id: 'has_retirement_income', text: 'Are you receiving retirement benefits?', trigger: 'retirement_income', inputField: { type: 'number', placeholder: 'e.g. 40,000', label: 'Annual Retirement Income ($)', mapTo: 'retirement_distributions' } },
+        { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income', inputField: { type: 'number', placeholder: 'e.g. 25,000', label: 'Annual Dividend Income ($)', mapTo: 'dividend_income' } }
       ]
     },
-    { id: 'high_income', text: 'Is your annual income above $250,000?', trigger: 'high_income' },
     { id: 'variable_income', text: 'Does your income vary significantly year to year?', trigger: 'variable_income' }
   ],
   investments: [
@@ -686,19 +680,17 @@ const questions = {
     { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' }
   ],
   brooklyn: [
-    { id: 'advisor_managed', text: 'Do you want an advisor-managed strategy?', trigger: 'advisor_managed' },
-    { id: 'custom_leverage', text: 'Do you want to set a custom leverage level?', trigger: 'custom_leverage' }
+    { id: 'advisor_managed', text: 'Will your account be advisor managed or Brooklyn managed? (suggested: Brooklyn managed)', trigger: 'advisor_managed' },
+    { id: 'beta_selection_q', text: 'What beta selection would you like?', trigger: 'beta_chosen', showWhen: function(a) { return a.advisor_managed === false; }, choiceType: 'select', choices: [{ label: 'Beta 1 (S&P 500)', value: '1' }, { label: 'Beta 1.5 (Nasdaq)', value: '1.5' }, { label: 'Beta 0 (Zero Beta)', value: '0' }] },
+    { id: 'custom_leverage', text: 'Are you interested in a custom leverage structure?', trigger: 'custom_leverage' },
+    { id: 'preset_leverage_q', text: 'Select a pre-set leverage strategy:', trigger: 'preset_chosen', showWhen: function(a) { return a.custom_leverage === false; }, choiceType: 'leverage_preset' }
   ],
   oilgas: [
     { id: 'interested_oil_gas', text: 'Are you interested in oil & gas investments for income offset?', trigger: 'interested_oil_gas' }
   ],
   realestate: [
     { id: 'real_estate_sale', text: 'Are you planning to sell real estate this year?', trigger: 'real_estate_sale' },
-    {
-      id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?',
-      trigger: 'cost_segregation',
-      showWhen: function(answers) { return answers.rental_property === true; }
-    },
+    { id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?', trigger: 'cost_segregation', showWhen: function(a) { return a.rental_property === true; } },
     { id: 'opportunity_zone', text: 'Are you interested in Opportunity Zone investments?', trigger: 'opportunity_zone' }
   ],
   retirement: [
@@ -707,15 +699,9 @@ const questions = {
     { id: 'max_401k', text: 'Are you maximizing your 401(k) contributions?', trigger: 'max_401k' }
   ],
   business: [
-    {
-      id: 'business_owner', text: 'Do you own or operate a business?', trigger: 'has_business',
-      followUp: [
-        { id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' },
-        { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }
-      ]
-    },
-    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp', showWhen: function(answers) { return answers.has_business === true; } },
-    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership', showWhen: function(answers) { return answers.has_business === true; } }
+    { id: 'business_owner', text: 'Do you own or operate a business?', trigger: 'has_business', followUp: [{ id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' }, { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }] },
+    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp', showWhen: function(a) { return a.has_business === true; } },
+    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership', showWhen: function(a) { return a.has_business === true; } }
   ]
 };
 
@@ -726,34 +712,65 @@ const sectionMap = {
 
 let userAnswers = {};
 let strategiesData = [];
+
+// --- Accounting Format Helper ---
+function formatCurrency(value) {
+  if (!value && value !== 0) return '';
+  var num = typeof value === "string" ? parseFloat(value.replace(/[^0-9.-]/g, "")) : value;
+  if (isNaN(num)) return '';
+  return '$' + num.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+function parseCurrencyInput(str) {
+  return str ? str.replace(/[^0-9.-]/g, '') : '0';
+}
+
+function setupCurrencyInput(input, mapTo) {
+  input.addEventListener('blur', function() {
+    var raw = parseCurrencyInput(this.value);
+    var num = parseFloat(raw);
+    if (!isNaN(num) && num > 0) { this.value = formatCurrency(num); }
+    if (mapTo) syncToPage2(mapTo, raw);
+  });
+  input.addEventListener('focus', function() {
+    var raw = parseCurrencyInput(this.value);
+    if (raw && raw !== '0') this.value = raw;
+  });
+  input.addEventListener('input', function() {
+    if (mapTo) syncToPage2(mapTo, parseCurrencyInput(this.value));
+  });
+}
+
 // --- Build Questions with Conditional Logic ---
 function buildQuestions() {
-  Object.keys(questions).forEach(section => {
-    const container = document.getElementById(sectionMap[section]);
+  Object.keys(questions).forEach(function(section) {
+    var container = document.getElementById(sectionMap[section]);
     if (!container) return;
     container.innerHTML = '';
-    questions[section].forEach(q => {
+    questions[section].forEach(function(q) {
       if (q.showWhen && !q.showWhen(userAnswers)) return;
-      renderQuestion(container, q, section);
+      if (q.choiceType === 'select') { renderSelectQuestion(container, q, section); }
+      else if (q.choiceType === 'leverage_preset') { renderPresetQuestion(container, q, section); }
+      else { renderQuestion(container, q, section); }
     });
   });
 }
 
 function renderQuestion(container, q, section) {
-  const card = document.createElement('div');
+  var card = document.createElement('div');
   card.className = 'question-card';
   card.setAttribute('data-question', q.id);
-  const textDiv = document.createElement('div');
+  var textDiv = document.createElement('div');
   textDiv.className = 'question-text';
   textDiv.textContent = q.text;
   card.appendChild(textDiv);
-  const toggleDiv = document.createElement('div');
+  var toggleDiv = document.createElement('div');
   toggleDiv.className = 'toggle-group';
-  const yesBtn = document.createElement('button');
+  var yesBtn = document.createElement('button');
   yesBtn.className = 'toggle-btn yes' + (userAnswers[q.trigger] === true ? ' selected' : '');
   yesBtn.textContent = 'Yes';
   yesBtn.onclick = function() { setAnswer(q.id, q.trigger, true, this, q, section); };
-  const noBtn = document.createElement('button');
+  var noBtn = document.createElement('button');
   noBtn.className = 'toggle-btn no' + (userAnswers[q.trigger] === false ? ' selected' : '');
   noBtn.textContent = 'No';
   noBtn.onclick = function() { setAnswer(q.id, q.trigger, false, this, q, section); };
@@ -762,29 +779,29 @@ function renderQuestion(container, q, section) {
   card.appendChild(toggleDiv);
   container.appendChild(card);
   if (q.followUp && userAnswers[q.trigger] === true) {
-    const followContainer = document.createElement('div');
-    followContainer.className = 'follow-up-container';
-    followContainer.id = 'followup-' + q.id;
-    q.followUp.forEach(fq => { renderFollowUpQuestion(followContainer, fq, section); });
-    container.appendChild(followContainer);
+    var fc = document.createElement('div');
+    fc.className = 'follow-up-container';
+    fc.id = 'followup-' + q.id;
+    q.followUp.forEach(function(fq) { renderFollowUpQuestion(fc, fq, section); });
+    container.appendChild(fc);
   }
 }
 
 function renderFollowUpQuestion(container, fq, section) {
-  const card = document.createElement('div');
+  var card = document.createElement('div');
   card.className = 'follow-up-question';
   card.setAttribute('data-question', fq.id);
-  const textDiv = document.createElement('div');
+  var textDiv = document.createElement('div');
   textDiv.className = 'question-text';
   textDiv.textContent = fq.text;
   card.appendChild(textDiv);
-  const toggleDiv = document.createElement('div');
+  var toggleDiv = document.createElement('div');
   toggleDiv.className = 'toggle-group';
-  const yesBtn = document.createElement('button');
+  var yesBtn = document.createElement('button');
   yesBtn.className = 'toggle-btn yes' + (userAnswers[fq.trigger] === true ? ' selected' : '');
   yesBtn.textContent = 'Yes';
   yesBtn.onclick = function() { setAnswer(fq.id, fq.trigger, true, this, fq, section); };
-  const noBtn = document.createElement('button');
+  var noBtn = document.createElement('button');
   noBtn.className = 'toggle-btn no' + (userAnswers[fq.trigger] === false ? ' selected' : '');
   noBtn.textContent = 'No';
   noBtn.onclick = function() { setAnswer(fq.id, fq.trigger, false, this, fq, section); };
@@ -796,50 +813,132 @@ function renderFollowUpQuestion(container, fq, section) {
 }
 
 function renderInlineInput(card, q) {
-  const inputDiv = document.createElement('div');
+  var inputDiv = document.createElement('div');
   inputDiv.className = 'inline-input-container';
   inputDiv.id = 'input-wrap-' + q.id;
   inputDiv.style.display = userAnswers[q.trigger] === true ? 'block' : 'none';
   inputDiv.style.marginTop = '10px';
-  const label = document.createElement('label');
+  var label = document.createElement('label');
   label.textContent = q.inputField.label;
   label.style.color = '#b0bec5';
   label.style.fontSize = '0.9em';
-  const input = document.createElement('input');
-  input.type = q.inputField.type || 'text';
+  var input = document.createElement('input');
+  input.type = 'text';
   input.placeholder = q.inputField.placeholder || '';
   input.id = 'inline-' + q.id;
-  input.style.cssText = 'width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;';
-  if (q.inputField.mapTo) {
-    input.addEventListener('input', function() { syncToPage2(q.inputField.mapTo, this.value); });
-  }
+  input.className = 'currency-input';
+  input.style.cssText = 'width:100%;padding:10px 12px;margin-top:4px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;font-size:1em;';
+  if (q.inputField.mapTo) { setupCurrencyInput(input, q.inputField.mapTo); }
   inputDiv.appendChild(label);
   inputDiv.appendChild(input);
   card.appendChild(inputDiv);
 }
+
+function renderSelectQuestion(container, q, section) {
+  var card = document.createElement('div');
+  card.className = 'question-card';
+  card.setAttribute('data-question', q.id);
+  var textDiv = document.createElement('div');
+  textDiv.className = 'question-text';
+  textDiv.textContent = q.text;
+  card.appendChild(textDiv);
+  var sel = document.createElement('select');
+  sel.className = 'strategy-select';
+  sel.style.cssText = 'padding:10px 14px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;font-size:0.95em;min-width:200px;';
+  var defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = '-- Select --';
+  sel.appendChild(defaultOpt);
+  q.choices.forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.value = c.value;
+    opt.textContent = c.label;
+    sel.appendChild(opt);
+  });
+  var savedVal = userAnswers['_select_' + q.id];
+  if (savedVal) sel.value = savedVal;
+  sel.onchange = function() {
+    userAnswers['_select_' + q.id] = this.value;
+    userAnswers[q.trigger] = !!this.value;
+    var betaEl = document.getElementById('beta_selection');
+    if (betaEl && this.value) betaEl.value = this.value;
+    rebuildConditionalSections();
+    buildSectionQuestions('brooklyn');
+    updateProgress();
+  };
+  card.appendChild(sel);
+  container.appendChild(card);
+}
+
+function renderPresetQuestion(container, q, section) {
+  var card = document.createElement('div');
+  card.className = 'question-card';
+  card.setAttribute('data-question', q.id);
+  var textDiv = document.createElement('div');
+  textDiv.className = 'question-text';
+  textDiv.textContent = q.text;
+  card.appendChild(textDiv);
+  var sel = document.createElement('select');
+  sel.className = 'strategy-select';
+  sel.style.cssText = 'padding:10px 14px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;font-size:0.95em;min-width:200px;';
+  var defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = '-- Select Leverage --';
+  sel.appendChild(defaultOpt);
+  var beta = userAnswers['_select_beta_selection_q'] || '1';
+  var isAdvisor = userAnswers.advisor_managed === true;
+  var stratKey = getBrooklynStrategyKey(isAdvisor, parseFloat(beta));
+  var strat = BROOKLYN_STRATEGIES[stratKey];
+  if (strat && strat.dataPoints) {
+    strat.dataPoints.forEach(function(dp) {
+      var opt = document.createElement('option');
+      opt.value = dp.label;
+      opt.textContent = dp.label + ' (' + dp.longPct + '/' + dp.shortPct + ')';
+      sel.appendChild(opt);
+    });
+  }
+  var savedPreset = userAnswers['_preset_leverage'];
+  if (savedPreset) sel.value = savedPreset;
+  sel.onchange = function() {
+    userAnswers['_preset_leverage'] = this.value;
+    userAnswers[q.trigger] = !!this.value;
+    var presetEl = document.getElementById('brooklyn_preset');
+    if (presetEl && this.value) presetEl.value = this.value;
+    updateProgress();
+  };
+  card.appendChild(sel);
+  container.appendChild(card);
+}
+
+function buildSectionQuestions(section) {
+  var container = document.getElementById(sectionMap[section]);
+  if (!container) return;
+  container.innerHTML = '';
+  questions[section].forEach(function(q) {
+    if (q.showWhen && !q.showWhen(userAnswers)) return;
+    if (q.choiceType === 'select') { renderSelectQuestion(container, q, section); }
+    else if (q.choiceType === 'leverage_preset') { renderPresetQuestion(container, q, section); }
+    else { renderQuestion(container, q, section); }
+  });
+}
 function setAnswer(questionId, trigger, value, btn, questionObj, section) {
   userAnswers[trigger] = value;
-  const card = btn.closest('.question-card') || btn.closest('.follow-up-question');
+  var card = btn.closest('.question-card') || btn.closest('.follow-up-question');
   if (card) {
-    card.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'));
+    card.querySelectorAll('.toggle-btn').forEach(function(b) { b.classList.remove('selected'); });
     btn.classList.add('selected');
   }
-  const inputWrap = document.getElementById('input-wrap-' + questionId);
+  var inputWrap = document.getElementById('input-wrap-' + questionId);
   if (inputWrap) { inputWrap.style.display = value ? 'block' : 'none'; }
   if (questionObj && questionObj.followUp) {
-    const existingFollowUp = document.getElementById('followup-' + questionId);
-    if (value && !existingFollowUp) {
-      const container = document.getElementById(sectionMap[section]);
-      if (container) {
-        container.innerHTML = '';
-        questions[section].forEach(q => {
-          if (q.showWhen && !q.showWhen(userAnswers)) return;
-          renderQuestion(container, q, section);
-        });
-      }
-    } else if (!value && existingFollowUp) { existingFollowUp.remove(); }
+    var existingFollowUp = document.getElementById('followup-' + questionId);
+    if (value && !existingFollowUp) { buildSectionQuestions(section); }
+    else if (!value && existingFollowUp) { existingFollowUp.remove(); }
   }
   rebuildConditionalSections();
+  if (section === 'brooklyn' || trigger === 'advisor_managed' || trigger === 'custom_leverage') {
+    buildSectionQuestions('brooklyn');
+  }
   syncPage2Visibility();
   updateProgress();
   updateMatchCount();
@@ -847,11 +946,11 @@ function setAnswer(questionId, trigger, value, btn, questionObj, section) {
 }
 
 function rebuildConditionalSections() {
-  ['business', 'realestate'].forEach(section => {
-    const container = document.getElementById(sectionMap[section]);
+  ['business', 'realestate'].forEach(function(section) {
+    var container = document.getElementById(sectionMap[section]);
     if (!container) return;
     container.innerHTML = '';
-    questions[section].forEach(q => {
+    questions[section].forEach(function(q) {
       if (q.showWhen && !q.showWhen(userAnswers)) return;
       renderQuestion(container, q, section);
     });
@@ -859,272 +958,249 @@ function rebuildConditionalSections() {
 }
 
 function syncToPage2(fieldId, value) {
-  const el = document.getElementById(fieldId);
-  if (el) {
-    el.value = value;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }
+  var el = document.getElementById(fieldId);
+  if (el) { el.value = value; el.dispatchEvent(new Event('input', { bubbles: true })); }
 }
 
 function syncPage2Visibility() {
-  const fieldVisibility = {
-    w2_employee: ['w2_wages'],
-    self_employed: ['se_income'],
-    has_business: ['biz_revenue'],
-    rental_property: ['rental_income'],
+  var fieldVisibility = {
+    w2_employee: ['w2_wages'], self_employed: ['se_income'],
+    has_business: ['biz_revenue'], rental_property: ['rental_income'],
     dividend_income: ['dividend_income']
   };
-  Object.entries(fieldVisibility).forEach(([trigger, fieldIds]) => {
-    const answered = userAnswers[trigger];
-    fieldIds.forEach(fieldId => {
-      const inputEl = document.getElementById(fieldId);
+  Object.entries(fieldVisibility).forEach(function(entry) {
+    var trigger = entry[0], fieldIds = entry[1];
+    var answered = userAnswers[trigger];
+    fieldIds.forEach(function(fieldId) {
+      var inputEl = document.getElementById(fieldId);
       if (!inputEl) return;
-      const group = inputEl.closest('.input-group');
+      var group = inputEl.closest('.input-group');
       if (group) {
         if (answered === false) { group.style.display = 'none'; inputEl.value = ''; }
         else { group.style.display = ''; }
       }
     });
   });
-  const ogField = document.getElementById('oil_gas_max');
+  var ogField = document.getElementById('oil_gas_max');
   if (ogField) {
-    const ogGroup = ogField.closest('.input-group');
+    var ogGroup = ogField.closest('.input-group');
     if (ogGroup) { ogGroup.style.display = userAnswers.interested_oil_gas === true ? '' : 'none'; }
   }
 }
 
 function updateProgress() {
-  let total = 0, answered = 0;
-  Object.values(questions).forEach(arr => {
-    arr.forEach(q => {
+  var total = 0, answered = 0;
+  Object.values(questions).forEach(function(arr) {
+    arr.forEach(function(q) {
       if (q.showWhen && !q.showWhen(userAnswers)) return;
-      total++;
-      if (userAnswers[q.trigger] !== undefined) answered++;
+      total++; if (userAnswers[q.trigger] !== undefined) answered++;
     });
   });
-  const pct = total > 0 ? Math.round(answered / total * 100) : 0;
-  const bar = document.getElementById('progress-fill');
+  var pct = total > 0 ? Math.round(answered / total * 100) : 0;
+  var bar = document.getElementById('progress-fill');
   if (bar) bar.style.width = pct + '%';
-  const label = document.getElementById('progress-pct');
+  var label = document.getElementById('progress-pct');
   if (label) label.textContent = pct + '%';
 }
 
 function updateMatchCount() {
   if (!strategiesData.length) return;
-  let count = 0;
-  strategiesData.forEach(s => {
+  var count = 0;
+  strategiesData.forEach(function(s) {
     if (!s.triggers) return;
-    const matched = s.triggers.every(t => userAnswers[t] === true);
+    var matched = s.triggers.every(function(t) { return userAnswers[t] === true; });
     if (matched) count++;
   });
-  const el = document.getElementById('match-count');
+  var el = document.getElementById('match-count');
   if (el) el.textContent = count;
 }
 
 function updateBrooklynUI() {
-  const customLev = userAnswers.custom_leverage;
-  const section = document.getElementById('custom-leverage-section');
+  var customLev = userAnswers.custom_leverage;
+  var section = document.getElementById('custom-leverage-section');
   if (section) { section.classList.toggle('hidden', !customLev); }
 }
+
 function getFormInputs() {
-  const fields = ['w2_wages','se_income','biz_revenue','rental_income',
+  var fields = ['w2_wages','se_income','biz_revenue','rental_income',
     'dividend_income','st_gains','lt_gains','unrealized_losses','portfolio_value',
     'property_values','charitable','salt','retirement_contrib','taxpayer_age','state',
     'implementation_date','available_capital','max_leverage','beta_selection',
     'brooklyn_preset','custom_leverage_value','filing_status','tax_year',
     'oil_gas_max','oil_gas_rate'];
-  const inp = {};
-  fields.forEach(f => {
-    const el = document.getElementById(f);
-    if (el) inp[f] = el.value;
-  });
+  var inp = {};
+  fields.forEach(function(f) { var el = document.getElementById(f); if (el) inp[f] = el.value; });
   return inp;
 }
 
-function getSelectedTaxYear() {
-  const el = document.getElementById('tax_year');
-  return el ? el.value : '2026';
-}
-
-function getSelectedState() {
-  const el = document.getElementById('state');
-  return el ? el.value : '';
-}
+function getSelectedTaxYear() { var el = document.getElementById('tax_year'); return el ? el.value : '2026'; }
+function getSelectedState() { var el = document.getElementById('state'); return el ? el.value : ''; }
 
 function calculateStrategies() {
-  const inp = getFormInputs();
-  const baseline = computeBaselineTax(inp);
-  const advisorManaged = userAnswers.advisor_managed === true;
-  const beta = parseFloat(inp.beta_selection || '1');
-  const stratKey = getBrooklynStrategyKey(advisorManaged, beta);
-  const implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
-  const availCap = parseFloat(inp.available_capital || 0);
-  const customLev = userAnswers.custom_leverage;
-  let leverage = 0.3;
-  if (customLev && inp.custom_leverage_value) {
-    leverage = parseFloat(inp.custom_leverage_value);
-  } else if (inp.brooklyn_preset) {
-    const presetMap = {
-      'Long-Only': 0, '100/100': 1.0, '130/30': 0.3, '145/45': 0.45,
-      '160/60': 0.6, '200/100': 1.0, '225/125': 1.25,
-      '250/150': 1.5, '275/275': 2.75, '325/225': 2.25
-    };
+  var inp = getFormInputs();
+  var baseline = computeBaselineTax(inp);
+  var advisorManaged = userAnswers.advisor_managed === true;
+  var beta = parseFloat(inp.beta_selection || '1');
+  var stratKey = getBrooklynStrategyKey(advisorManaged, beta);
+  var implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
+  var availCap = parseFloat(inp.available_capital || 0);
+  var customLev = userAnswers.custom_leverage;
+  var leverage = 0.3;
+  if (customLev && inp.custom_leverage_value) { leverage = parseFloat(inp.custom_leverage_value); }
+  else if (inp.brooklyn_preset) {
+    var presetMap = { 'Long-Only': 0, '100/100': 1.0, '130/30': 0.3, '145/45': 0.45, '160/60': 0.6, '200/100': 1.0, '225/125': 1.25, '250/150': 1.5, '275/275': 2.75, '325/225': 2.25 };
     leverage = presetMap[inp.brooklyn_preset] || 0.3;
   }
-  const enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
-  const result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
+  var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
+  var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
   displayResults(result, baseline, inp);
 }
 function displayResults(result, baseline, inputs) {
-  const te = document.getElementById('total-strategies');
-  if (te) te.textContent = result.allocation.length;
-  const se = document.getElementById('est-savings');
-  if (se) se.textContent = '$' + result.savings.toLocaleString();
-  const ie = document.getElementById('total-income');
-  if (ie) ie.textContent = '$' + result.totalIncome.toLocaleString();
-  const be = document.getElementById('baseline-tax');
-  if (be) be.textContent = '$' + result.baselineTax.toLocaleString();
-  const oe = document.getElementById('optimized-tax');
-  if (oe) oe.textContent = '$' + result.optimizedTax.toLocaleString();
-  const re = document.getElementById('roi-display');
-  if (re) re.textContent = result.roi;
+  var a = result.allocation.length > 0 ? result.allocation[0] : null;
+  var strat = a && a.key ? BROOKLYN_STRATEGIES[a.key] : null;
+  var effRate = result.totalIncome > 0 ? (result.baselineTax / result.totalIncome * 100).toFixed(1) : '0';
+  var newRate = result.totalIncome > 0 ? (result.optimizedTax / result.totalIncome * 100).toFixed(1) : '0';
+  var totalInvested = a ? (a.investment || 0) + (a.oilGasInvestment || 0) : 0;
 
-  const fbe = document.getElementById('federal-tax-display');
-  if (fbe) fbe.textContent = '$' + (result.baselineFederalTax || 0).toLocaleString();
-  const ste = document.getElementById('state-tax-display');
-  if (ste) ste.textContent = '$' + (result.baselineStateTax || 0).toLocaleString();
-  const yde = document.getElementById('tax-year-display');
-  if (yde) yde.textContent = result.year || getSelectedTaxYear();
-  const sde = document.getElementById('state-display');
-  if (sde) sde.textContent = result.state || getSelectedState() || 'N/A';
+  var page3 = document.getElementById('page3');
+  if (!page3) return;
+  page3.innerHTML = '';
 
-  const effRate = result.totalIncome > 0 ? (result.baselineTax / result.totalIncome * 100).toFixed(1) : '0';
-  const newRate = result.totalIncome > 0 ? (result.optimizedTax / result.totalIncome * 100).toFixed(1) : '0';
-  const er = document.getElementById('effective-rate');
-  if (er) er.textContent = effRate + '%';
-  const nr = document.getElementById('new-rate');
-  if (nr) nr.textContent = newRate + '%';
+  // Header
+  var header = document.createElement('div');
+  header.innerHTML = '<h2 style="font-size:1.4em;font-weight:700;margin-bottom:4px;">Strategy Summary & Optimization</h2><p style="color:#8899aa;margin-bottom:20px;">Optimized tax strategy allocation based on your inputs.</p>';
+  page3.appendChild(header);
 
-  const co = document.getElementById('results-container');
-  if (co) {
-    co.innerHTML = '';
-    result.allocation.forEach(a => {
-      const strat = a.key ? BROOKLYN_STRATEGIES[a.key] : null;
-      const cd = document.createElement('div');
-      cd.style.cssText = 'background:#111d35;border:1px solid #1a3a6e;border-radius:10px;padding:18px;margin-bottom:12px;';
-      let html = '';
+  // TABLE 1: BASELINE
+  var t1 = document.createElement('div');
+  t1.className = 'results-table-section';
+  t1.innerHTML = '<h3 class="table-title">Baseline \u2014 Without Tax Planning</h3>' +
+    '<table class="results-table"><tbody>' +
+    '<tr><td>Tax Year</td><td>' + (result.year || getSelectedTaxYear()) + '</td></tr>' +
+    '<tr><td>Filing Status</td><td>' + (inputs.filing_status || 'Single') + '</td></tr>' +
+    '<tr><td>State</td><td>' + (result.state || getSelectedState() || 'N/A') + '</td></tr>' +
+    '<tr><td>Total Income</td><td>' + formatCurrency(result.totalIncome) + '</td></tr>' +
+    '<tr><td>Federal Tax</td><td>' + formatCurrency(result.baselineFederalTax) + '</td></tr>' +
+    '<tr><td>State Tax</td><td>' + formatCurrency(result.baselineStateTax) + '</td></tr>' +
+    '<tr class="total-row"><td>Total Tax Liability</td><td>' + formatCurrency(result.baselineTax) + '</td></tr>' +
+    '<tr><td>Effective Tax Rate</td><td>' + effRate + '%</td></tr>' +
+    '</tbody></table>';
+  page3.appendChild(t1);
 
-      if (a.key && strat) {
-        const dp = strat.dataPoints ? strat.dataPoints.find(dp => dp.leverage === a.leverage) : null;
-        const longPct = dp ? dp.longPct : '';
-        const shortPct = dp ? dp.shortPct : '';
-        html += '<h5 style="color:#f0a500;margin-bottom:8px;">' + (strat ? strat.name : a.key) + '</h5>';
-        html += '<span class="type-badge badge-type">Brooklyn Strategy</span>';
-        html += '<span class="type-badge badge-medium">Leverage: ' + longPct + '/' + shortPct + '</span>';
-        html += '<p style="color:#c0c0c0;margin:8px 0;">Investment: $' + Math.round(a.investment).toLocaleString() + '</p>';
-        html += '<p style="color:#c0c0c0;margin:4px 0;">Short-term losses generated: $' + Math.round(a.losses).toLocaleString() + '</p>';
-      }
+  // TABLE 2: WITH PLANNING
+  var t2 = document.createElement('div');
+  t2.className = 'results-table-section';
+  var stratRows = '';
 
-      if (a.oilGasInvestment > 0) {
-        html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a3a6e;">';
-        html += '<h5 style="color:#4caf50;margin-bottom:8px;">Oil & Gas Strategy</h5>';
-        html += '<span class="type-badge" style="background:#1b5e20;color:#a5d6a7;">Ordinary Income Offset</span>';
-        html += '<p style="color:#c0c0c0;margin:8px 0;">Investment: $' + Math.round(a.oilGasInvestment).toLocaleString() + '</p>';
-        html += '<p style="color:#c0c0c0;margin:4px 0;">Ordinary income offset: $' + Math.round(a.oilGasOffset).toLocaleString() + '</p>';
-        html += '<p style="color:#c0c0c0;margin:4px 0;">Offset rate: ' + (parseFloat(inputs.oil_gas_rate || 0.95) * 100).toFixed(0) + '%</p>';
-        html += '</div>';
-      }
-
-      const totalInvested = (a.investment || 0) + (a.oilGasInvestment || 0);
-      html += '<p style="color:#4caf50;margin:8px 0;font-weight:bold;">Total investment: $' + Math.round(totalInvested).toLocaleString() + '</p>';
-      html += '<p style="color:#4caf50;margin:4px 0;font-weight:bold;">Tax savings: $' + result.savings.toLocaleString() + '</p>';
-
-      if (a.minLeverageOption) {
-        const mlo = a.minLeverageOption;
-        html += '<div style="margin-top:12px;padding:12px;background:#0d1526;border-radius:8px;border:1px solid #2a4a8e;">';
-        html += '<p style="color:#f59e0b;font-weight:bold;margin-bottom:6px;">Lower Leverage Alternative</p>';
-        html += '<p style="color:#c0c0c0;margin:2px 0;">Brooklyn leverage: ' + (mlo.leverage * 100).toFixed(0) + '% (vs ' + (a.leverage * 100).toFixed(0) + '%)</p>';
-        html += '<p style="color:#c0c0c0;margin:2px 0;">Brooklyn losses: $' + Math.round(mlo.losses).toLocaleString() + '</p>';
-        html += '<p style="color:#c0c0c0;margin:2px 0;">Same tax result within $100</p>';
-        html += '</div>';
-      }
-
-      cd.innerHTML = html;
-      co.appendChild(cd);
-    });
+  if (a && a.key && strat && a.investment > 0) {
+    var dp = strat.dataPoints ? strat.dataPoints.find(function(p) { return p.leverage === a.leverage; }) : null;
+    stratRows += '<tr class="strategy-header"><td colspan="2">Brooklyn Strategy: ' + strat.name + '</td></tr>';
+    stratRows += '<tr><td>Leverage</td><td>' + (dp ? dp.longPct + '/' + dp.shortPct : 'Custom') + '</td></tr>';
+    stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.investment) + '</td></tr>';
+    stratRows += '<tr><td>Short-Term Losses Generated</td><td>' + formatCurrency(a.losses) + '</td></tr>';
   }
+  if (a && a.oilGasInvestment > 0) {
+    stratRows += '<tr class="strategy-header"><td colspan="2">Oil & Gas Strategy</td></tr>';
+    stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.oilGasInvestment) + '</td></tr>';
+    stratRows += '<tr><td>Ordinary Income Offset (' + (parseFloat(inputs.oil_gas_rate || 0.95) * 100).toFixed(0) + '%)</td><td>' + formatCurrency(a.oilGasOffset) + '</td></tr>';
+  }
+  var minLevRow = '';
+  if (a && a.minLeverageOption) {
+    var mlo = a.minLeverageOption;
+    minLevRow = '<tr class="alt-row"><td>Lower Leverage Alternative</td><td>' + (mlo.leverage * 100).toFixed(0) + '% leverage \u2014 same result within $100</td></tr>';
+  }
+
+  t2.innerHTML = '<h3 class="table-title">With Tax Planning</h3>' +
+    '<table class="results-table"><tbody>' +
+    '<tr class="strategy-header"><td colspan="2">Strategies Applied</td></tr>' +
+    stratRows + minLevRow +
+    '<tr class="spacer-row"><td colspan="2"></td></tr>' +
+    '<tr><td>Optimized Tax</td><td>' + formatCurrency(result.optimizedTax) + '</td></tr>' +
+    '<tr><td>New Effective Rate</td><td>' + newRate + '%</td></tr>' +
+    '<tr><td>Total Investment</td><td>' + formatCurrency(totalInvested) + '</td></tr>' +
+    '</tbody></table>';
+  page3.appendChild(t2);
+
+  // SUMMARY TABLE
+  var t3 = document.createElement('div');
+  t3.className = 'results-table-section summary-section';
+  var roiPct = totalInvested > 0 ? ((result.savings / totalInvested) * 100).toFixed(1) : '0';
+  t3.innerHTML = '<h3 class="table-title summary-title">Return on Planning</h3>' +
+    '<table class="results-table summary-table"><tbody>' +
+    '<tr><td>Tax Without Planning</td><td>' + formatCurrency(result.baselineTax) + '</td></tr>' +
+    '<tr><td>Tax With Planning</td><td>' + formatCurrency(result.optimizedTax) + '</td></tr>' +
+    '<tr class="savings-row"><td>Tax Savings</td><td>' + formatCurrency(result.savings) + '</td></tr>' +
+    '<tr><td>Strategy Fees</td><td>TBD</td></tr>' +
+    '<tr><td>Advisory Fees</td><td>TBD</td></tr>' +
+    '<tr class="total-row"><td>Return on Investment</td><td>' + roiPct + '%</td></tr>' +
+    '</tbody></table>';
+  page3.appendChild(t3);
+
+  // Buttons
+  var btnDiv = document.createElement('div');
+  btnDiv.style.cssText = 'margin-top:30px;display:flex;gap:15px;';
+  btnDiv.innerHTML = '<button class="btn btn-primary" onclick="calculateStrategies()">Recalculate</button><button class="btn btn-secondary" onclick="exportResults()">Export Report</button>';
+  page3.appendChild(btnDiv);
 }
 function showPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  const pg = document.getElementById(pageId);
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
+  var pg = document.getElementById(pageId);
   if (pg) pg.classList.add('active');
-  const ti = pageId === 'page1' ? 0 : pageId === 'page2' ? 1 : 2;
-  const tabs = document.querySelectorAll('.nav-tab');
+  var ti = pageId === 'page1' ? 0 : pageId === 'page2' ? 1 : 2;
+  var tabs = document.querySelectorAll('.nav-tab');
   if (tabs[ti]) tabs[ti].classList.add('active');
   if (pageId === 'page2') { syncPage2Visibility(); }
   if (pageId === 'page3') calculateStrategies();
 }
 
 function exportResults() {
-  const inp = getFormInputs();
-  const baseline = computeBaselineTax(inp);
-  const advisorManaged = userAnswers.advisor_managed === true;
-  const beta = parseFloat(inp.beta_selection || '1');
-  const stratKey = getBrooklynStrategyKey(advisorManaged, beta);
-  const implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
-  const availCap = parseFloat(inp.available_capital || 0);
-  const leverage = parseFloat(inp.custom_leverage_value || inp.max_leverage || 0.3);
-  const enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
-  const result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
-
-  const year = result.year || getSelectedTaxYear();
-  const state = result.state || getSelectedState();
-  let rp = 'BROOKHAVEN TAX STRATEGY REPORT\n';
+  var inp = getFormInputs();
+  var baseline = computeBaselineTax(inp);
+  var advisorManaged = userAnswers.advisor_managed === true;
+  var beta = parseFloat(inp.beta_selection || '1');
+  var stratKey = getBrooklynStrategyKey(advisorManaged, beta);
+  var implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
+  var availCap = parseFloat(inp.available_capital || 0);
+  var leverage = parseFloat(inp.custom_leverage_value || inp.max_leverage || 0.3);
+  var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
+  var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
+  var year = result.year || getSelectedTaxYear();
+  var state = result.state || getSelectedState();
+  var rp = 'BROOKHAVEN TAX STRATEGY REPORT\n';
   rp += '================================\n\n';
   rp += 'Tax Year: ' + year + '\n';
   rp += 'State: ' + state + '\n';
   rp += 'Filing Status: ' + (inp.filing_status || 'N/A') + '\n\n';
-  rp += 'INCOME SUMMARY\n';
-  rp += '--------------\n';
-  rp += 'Total Income: $' + result.totalIncome.toLocaleString() + '\n';
-  rp += 'W-2 Wages: $' + (parseFloat(inp.w2_wages || 0)).toLocaleString() + '\n';
-  if (parseFloat(inp.se_income || 0) > 0) rp += 'Self-Employment: $' + (parseFloat(inp.se_income)).toLocaleString() + '\n';
-  if (parseFloat(inp.biz_revenue || 0) > 0) rp += 'Business Revenue: $' + (parseFloat(inp.biz_revenue)).toLocaleString() + '\n';
-  if (parseFloat(inp.rental_income || 0) > 0) rp += 'Rental Income: $' + (parseFloat(inp.rental_income)).toLocaleString() + '\n';
-  rp += '\n';
-  rp += 'TAX ANALYSIS\n';
-  rp += '------------\n';
-  rp += 'Baseline Tax: $' + result.baselineTax.toLocaleString() + '\n';
-  rp += '  Federal: $' + (result.baselineFederalTax || 0).toLocaleString() + '\n';
-  rp += '  State: $' + (result.baselineStateTax || 0).toLocaleString() + '\n';
-  rp += 'Optimized Tax: $' + result.optimizedTax.toLocaleString() + '\n';
-  rp += 'Total Savings: $' + result.savings.toLocaleString() + '\n';
+  rp += 'BASELINE (NO PLANNING)\n';
+  rp += '----------------------\n';
+  rp += 'Total Income: ' + formatCurrency(result.totalIncome) + '\n';
+  rp += 'Baseline Tax: ' + formatCurrency(result.baselineTax) + '\n';
+  rp += '  Federal: ' + formatCurrency(result.baselineFederalTax) + '\n';
+  rp += '  State: ' + formatCurrency(result.baselineStateTax) + '\n\n';
+  rp += 'WITH PLANNING\n';
+  rp += '-------------\n';
+  rp += 'Optimized Tax: ' + formatCurrency(result.optimizedTax) + '\n';
+  rp += 'Tax Savings: ' + formatCurrency(result.savings) + '\n';
   rp += 'ROI: ' + result.roi + '\n\n';
   rp += 'STRATEGIES APPLIED\n';
   rp += '------------------\n';
-  result.allocation.forEach(a => {
+  result.allocation.forEach(function(a) {
     if (a.key) {
-      const strat = BROOKLYN_STRATEGIES[a.key];
-      rp += '  Strategy: ' + (strat ? strat.name : a.key) + '\n';
-      rp += '  Leverage: ' + (a.leverage * 100).toFixed(0) + '%\n';
-      rp += '  Investment: $' + Math.round(a.investment).toLocaleString() + '\n';
-      rp += '  Short-term losses: $' + Math.round(a.losses).toLocaleString() + '\n';
+      var strat = BROOKLYN_STRATEGIES[a.key];
+      rp += '  Brooklyn: ' + (strat ? strat.name : a.key) + '\n';
+      rp += '  Investment: ' + formatCurrency(a.investment) + '\n';
+      rp += '  Losses: ' + formatCurrency(a.losses) + '\n';
     }
     if (a.oilGasInvestment > 0) {
-      rp += '  Oil & Gas Investment: $' + Math.round(a.oilGasInvestment).toLocaleString() + '\n';
-      rp += '  Oil & Gas Offset: $' + Math.round(a.oilGasOffset).toLocaleString() + '\n';
-    }
-    const mlo = a.minLeverageOption;
-    if (mlo) {
-      rp += '  Min Leverage Alternative: ' + (mlo.leverage * 100).toFixed(0) + '% => losses $' + Math.round(mlo.losses).toLocaleString() + ' (in carryover)\n';
+      rp += '  Oil & Gas Investment: ' + formatCurrency(a.oilGasInvestment) + '\n';
+      rp += '  O&G Offset: ' + formatCurrency(a.oilGasOffset) + '\n';
     }
     rp += '\n';
   });
-
-  const blob = new Blob([rp], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  var blob = new Blob([rp], { type: 'text/plain' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url;
   a.download = 'brookhaven-tax-report-' + year + '.txt';
   document.body.appendChild(a);
@@ -1134,12 +1210,12 @@ function exportResults() {
 }
 
 async function loadStrategies() {
-  const paths = ['data/strategies.json', '../data/strategies.json', './data/strategies.json'];
-  for (const p of paths) {
+  var paths = ['data/strategies.json', '../data/strategies.json', './data/strategies.json'];
+  for (var i = 0; i < paths.length; i++) {
     try {
-      const r = await fetch(p);
+      var r = await fetch(paths[i]);
       if (r.ok) {
-        const data = await r.json();
+        var data = await r.json();
         strategiesData = data.strategies || data;
         console.log('Loaded', strategiesData.length, 'strategies');
         updateMatchCount();
