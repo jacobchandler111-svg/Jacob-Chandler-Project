@@ -18,52 +18,39 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 .page.active{display:block}
 .section-title{font-size:1.3em;font-weight:600;margin:25px 0 15px;color:#90caf9;border-left:4px solid #64b5f6;padding-left:12px}
 .question-card{background:#111d35;border:1px solid #1a3a6e;border-radius:10px;padding:18px 24px;margin:10px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
-.follow-up-container{width:100%;flex-basis:100%;margin-top:12px;padding-top:12px;border-top:1px solid #1e293b}
-.follow-up-question{margin-bottom:8px;background:#0d1526!important;border-color:#f59e0b33!important}
-.inline-input-container{width:100%;flex-basis:100%}
-.question-text{flex:1;color:#c8d6e5}
+.question-text{flex:1;font-size:1em;color:#c8d6e5}
 .toggle-group{display:flex;gap:8px}
-.toggle-btn{padding:8px 20px;border-radius:20px;border:1px solid #2a4a7e;background:transparent;color:#8899aa;cursor:pointer;transition:all 0.2s;font-size:0.9em}
-.toggle-btn:hover{border-color:#64b5f6;color:#64b5f6}
-.toggle-btn.selected{background:#1a4a8e;color:#fff;border-color:#64b5f6}
-.progress-bar{height:6px;background:#1a2a4e;border-radius:3px;margin:15px 0}
-.progress-fill{height:100%;background:linear-gradient(90deg,#2196f3,#64b5f6);border-radius:3px;width:0%;transition:width 0.3s}
-.input-group{margin:12px 0}
-.input-group label{display:block;color:#8899aa;margin-bottom:6px;font-size:0.9em}
-.input-group input,.input-group select{width:100%;padding:10px 14px;background:#0d1b3e;border:1px solid #2a4a7e;border-radius:8px;color:#e0e0e0;font-size:1em}
+.toggle-btn{padding:8px 20px;border-radius:20px;border:1px solid #2a4a8e;background:transparent;color:#8899aa;cursor:pointer;font-size:0.9em;transition:all 0.2s}
+.toggle-btn.selected.yes{background:#1565c0;color:#fff;border-color:#1565c0}
+.toggle-btn.selected.no{background:#455a64;color:#fff;border-color:#455a64}
+.toggle-btn:hover{border-color:#4a7ac7}
+.input-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:15px;margin-bottom:20px}
+.input-group{display:flex;flex-direction:column;gap:4px}
+.input-group label{color:#8899aa;font-size:0.85em;font-weight:500}
+.input-group input,.input-group select{padding:10px 14px;border-radius:8px;border:1px solid #1a3a6e;background:#0d1b3e;color:#e0e0e0;font-size:0.95em}
 .input-group input:focus,.input-group select:focus{outline:none;border-color:#64b5f6}
-.input-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:15px;margin:20px 0}
-.summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:15px;margin:20px 0}
-.summary-card{background:#111d35;border:1px solid #1a3a6e;border-radius:10px;padding:20px;text-align:center}
-.summary-card .label{color:#8899aa;font-size:0.85em;margin-bottom:8px}
-.summary-card .value{color:#64b5f6;font-size:1.5em;font-weight:700}
-.summary-card .value.green{color:#4caf50}
-.summary-card .value.red{color:#ef5350}
-.strategy-result{background:#111d35;border:1px solid #1a3a6e;border-radius:10px;padding:20px;margin:10px 0}
-.type-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:0.75em;margin-right:8px;margin-top:4px}
-.badge-type{background:#1a3a6e;color:#64b5f6}
-.badge-medium{background:#2a3a5e;color:#ffa726}
-.btn{padding:12px 28px;border-radius:8px;border:none;cursor:pointer;font-size:0.95em;font-weight:600;transition:all 0.2s}
-.btn-primary{background:linear-gradient(135deg,#1976d2,#2196f3);color:#fff}
-.btn-primary:hover{opacity:0.9}
-.btn-secondary{background:#1a3a6e;color:#64b5f6;border:1px solid #2a5a9e}
-.matched-count{color:#64b5f6;font-size:0.9em;margin:10px 0}
-.hidden{display:none}
-
-.results-table-section{margin-bottom:24px}
-.table-title{color:#64b5f6;font-size:1.1em;font-weight:600;margin:20px 0 10px;padding-left:12px;border-left:3px solid #64b5f6}
-.summary-title{color:#4caf50;border-left-color:#4caf50}
+.hidden{display:none!important}
+.btn{padding:12px 28px;border-radius:8px;border:none;cursor:pointer;font-size:1em;font-weight:600;transition:all 0.2s}
+.btn-primary{background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff}
+.btn-primary:hover{background:linear-gradient(135deg,#1976d2,#2196f3)}
+.btn-secondary{background:#1a3a6e;color:#90caf9;border:1px solid #2a4a8e}
+.btn-secondary:hover{background:#2a4a8e}
+.progress-bar{height:6px;background:#1a3a6e;border-radius:3px;margin:15px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,#1565c0,#42a5f5);border-radius:3px;transition:width 0.3s}
+.match-badge{color:#4caf50;font-size:0.95em;margin-top:10px}
+.results-table-section{margin-bottom:28px}
+.table-title{font-size:1.15em;font-weight:600;color:#90caf9;margin-bottom:10px;letter-spacing:0.3px}
 .results-table{width:100%;border-collapse:collapse;background:#111d35;border-radius:10px;overflow:hidden;border:1px solid #1a3a6e}
-.results-table td{padding:12px 18px;border-bottom:1px solid #1a3a6e33;color:#c0c0c0;font-size:0.95em}
+.results-table td{padding:12px 18px;border-bottom:1px solid #1a3a6e;font-size:0.95em}
 .results-table td:first-child{color:#8899aa;width:55%}
-.results-table td:last-child{text-align:right;font-weight:500;color:#e0e0e0}
-.results-table .total-row td{border-top:2px solid #1a3a6e;font-weight:700;font-size:1.05em;color:#f44336}
-.results-table .total-row td:last-child{color:#f44336}
-.results-table .savings-row td{font-weight:700;color:#4caf50!important}
-.results-table .savings-row td:last-child{color:#4caf50!important;font-size:1.1em}
-.results-table .strategy-header td{background:#0a1628;color:#f0a500!important;font-weight:600;font-size:0.95em;border-bottom:1px solid #1a3a6e}
-.results-table .alt-row td{background:#0d1526;color:#f59e0b!important;font-style:italic}
-.results-table .spacer-row td{padding:4px;border:none}
+.results-table td:last-child{color:#e0e0e0;text-align:right;font-weight:500}
+.results-table .total-row td{font-weight:700;color:#64b5f6!important;border-top:2px solid #2a4a8e;font-size:1.05em}
+.results-table .savings-row td{color:#4caf50!important;font-weight:700;font-size:1.05em}
+.results-table .strategy-header td{background:#0d1b3e;color:#90caf9!important;font-weight:600;font-size:0.95em}
+.results-table .alt-row td{background:#0f1a30;font-style:italic;color:#b0bec5!important}
+.results-table .spacer-row td{padding:6px;border-bottom:none}
+.summary-section{border:1px solid #2a6b2a;border-radius:10px;padding:18px;background:#0d1f0d}
+.summary-title{color:#4caf50!important}
 .summary-table .total-row td{color:#4caf50!important}
 .follow-up-container{width:100%;flex-basis:100%;padding:8px 0 8px 20px}
 .follow-up-question{background:#162240!important;border:1px solid #2a4a8e!important;border-left:3px solid #f59e0b!important;border-radius:8px;padding:14px 20px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between}
@@ -73,7 +60,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 .inline-input-container{width:100%;flex-basis:100%;margin-top:8px}
 .strategy-select{cursor:pointer}
 .strategy-select:hover{border-color:#4a7ac7}
-
 </style>
 </head>
 <body>
@@ -91,96 +77,31 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <div id="page1" class="page active">
 <h2 style="font-size:1.4em;margin-bottom:8px;font-weight:700">Strategy Selector</h2>
 <p style="color:#8899aa;margin-bottom:15px">Answer the following questions to identify which strategies apply to your situation.</p>
-<div class="progress-bar"><div id="progress1" class="progress-fill"></div></div>
-<div class="matched-count">0 strategies matched</div>
-
+<div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+<div class="match-badge"><span id="match-count">0</span> strategies matched</div>
 <div class="section-title">Income & Filing</div>
 <div id="q-income"></div>
-
 <div class="section-title">Investments</div>
 <div id="q-investments"></div>
-
-<div class="section-title">Brooklyn Strategy Options</div>
+<div class="section-title">Brooklyn Strategy</div>
 <div id="q-brooklyn"></div>
-
-<div class="section-title">Oil & Gas Strategy</div>
+<div class="section-title">Oil & Gas</div>
 <div id="q-oilgas"></div>
-
-<div id="beta-selection" class="hidden" style="margin:15px 0;padding:15px;background:#111d35;border:1px solid #1a3a6e;border-radius:10px">
-<div class="input-group">
-<label>Select Beta</label>
-<select id="beta_selection">
-<option value="1">Beta 1 (S&P 500 Benchmark)</option>
-<option value="0.5">Beta 0.5 (Cash/S&P 500 Benchmark)</option>
-<option value="0">Beta 0 (Cash Benchmark)</option>
-</select>
-</div>
-</div>
-
-<div style="margin:15px 0;padding:15px;background:#111d35;border:1px solid #1a3a6e;border-radius:10px">
-<div class="input-group">
-<label>Pre-selected Leverage Strategy</label>
-<select id="brooklyn_preset">
-<option value="">-- Select a preset --</option>
-<option value="Long-Only">Long-Only (100/0)</option>
-<option value="130/30">130/30</option>
-<option value="145/45">145/45</option>
-<option value="200/100">200/100</option>
-<option value="250/150">250/150</option>
-<option value="325/225">325/225</option>
-</select>
-</div>
-</div>
-
-<div id="custom-leverage-section" class="hidden" style="margin:15px 0;padding:15px;background:#111d35;border:1px solid #1a3a6e;border-radius:10px">
-<div class="input-group">
-<label>Custom Max Leverage (decimal, e.g. 0.3 = 130/30, 1.0 = 200/100)</label>
-<input type="number" id="custom_leverage_value" step="0.01" min="0" max="3" placeholder="e.g. 0.45">
-</div>
-</div>
-
 <div class="section-title">Real Estate</div>
 <div id="q-realestate"></div>
-
 <div class="section-title">Retirement</div>
 <div id="q-retirement"></div>
-
 <div class="section-title">Business</div>
 <div id="q-business"></div>
+<div style="margin-top:30px">
+<button class="btn btn-primary" onclick="showPage('page2')">Continue to Client Inputs &rarr;</button>
+</div>
 </div>
 
 <!-- PAGE 2: CLIENT INPUTS -->
 <div id="page2" class="page">
 <h2 style="font-size:1.4em;margin-bottom:8px;font-weight:700">Client Financial Inputs</h2>
 <p style="color:#8899aa;margin-bottom:15px">Enter financial details for accurate strategy calculations.</p>
-
-<div class="section-title">Strategy Parameters</div>
-<div class="input-grid">
-<div class="input-group">
-<label>Implementation Date</label>
-<input type="date" id="implementation_date" value="2026-01-01">
-</div>
-<div class="input-group">
-<label>Available Capital for Strategies ($)</label>
-<input type="number" id="available_capital" placeholder="Amount willing to invest">
-</div>
-<div class="input-group">
-<label>Max Leverage (decimal)</label>
-<input type="number" id="max_leverage" step="0.01" value="0.30" placeholder="e.g. 0.30">
-</div>
-</div>
-
-<div class="section-title">Oil & Gas Parameters</div>
-<div class="input-grid">
-<div class="input-group">
-<label>Max Oil & Gas Investment ($)</label>
-<input type="number" id="oil_gas_max" placeholder="Max willing to invest in O&G" value="0">
-</div>
-<div class="input-group" style="display:none;">
-<label>Oil & Gas Offset Rate</label>
-<input type="number" id="oil_gas_rate" step="0.01" value="0.95" placeholder="e.g. 0.95">
-</div>
-</div>
 
 <div class="section-title">Filing Information</div>
 <div class="input-grid">
@@ -203,63 +124,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <div class="input-group">
 <label>State</label>
 <select id="state">
-<option value="">-- Select State --</option>
-<option value="AL">AL</option>
-<option value="AK">AK</option>
-<option value="AZ">AZ</option>
-<option value="AR">AR</option>
-<option value="CA">CA</option>
-<option value="CO">CO</option>
-<option value="CT">CT</option>
-<option value="DE">DE</option>
-<option value="FL">FL</option>
-<option value="GA">GA</option>
-<option value="HI">HI</option>
-<option value="ID">ID</option>
-<option value="IL">IL</option>
-<option value="IN">IN</option>
-<option value="IA">IA</option>
-<option value="KS">KS</option>
-<option value="KY">KY</option>
-<option value="LA">LA</option>
-<option value="ME">ME</option>
-<option value="MD">MD</option>
-<option value="MA">MA</option>
-<option value="MI">MI</option>
-<option value="MN">MN</option>
-<option value="MS">MS</option>
-<option value="MO">MO</option>
-<option value="MT">MT</option>
-<option value="NE">NE</option>
-<option value="NV">NV</option>
-<option value="NH">NH</option>
-<option value="NJ">NJ</option>
-<option value="NM">NM</option>
-<option value="NY">NY</option>
-<option value="NC">NC</option>
-<option value="ND">ND</option>
-<option value="OH">OH</option>
-<option value="OK">OK</option>
-<option value="OR">OR</option>
-<option value="PA">PA</option>
-<option value="RI">RI</option>
-<option value="SC">SC</option>
-<option value="SD">SD</option>
-<option value="TN">TN</option>
-<option value="TX">TX</option>
-<option value="UT">UT</option>
-<option value="VT">VT</option>
-<option value="VA">VA</option>
-<option value="WA">WA</option>
-<option value="WV">WV</option>
-<option value="WI">WI</option>
-<option value="WY">WY</option>
-<option value="DC">DC</option>
+<option value="">-- Select State --</option><option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option><option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option><option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option><option value="WY">WY</option>
 </select>
 </div>
 <div class="input-group">
 <label>Taxpayer Age</label>
-<input type="number" id="taxpayer_age" placeholder="Age">
+<input type="number" id="taxpayer_age" placeholder="e.g. 45">
 </div>
 </div>
 
@@ -267,23 +137,27 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <div class="input-grid">
 <div class="input-group">
 <label>W-2 Wages ($)</label>
-<input type="number" id="w2_wages" placeholder="0">
+<input type="text" id="w2_wages" placeholder="0">
 </div>
 <div class="input-group">
 <label>Self-Employment Income ($)</label>
-<input type="number" id="se_income" placeholder="0">
+<input type="text" id="se_income" placeholder="0">
 </div>
 <div class="input-group">
-<label>Business Revenue ($)</label>
-<input type="number" id="biz_revenue" placeholder="0">
+<label>Business Revenue / Distributions ($)</label>
+<input type="text" id="biz_revenue" placeholder="0">
 </div>
 <div class="input-group">
 <label>Rental Income ($)</label>
-<input type="number" id="rental_income" placeholder="0">
+<input type="text" id="rental_income" placeholder="0">
 </div>
 <div class="input-group">
 <label>Dividend Income ($)</label>
-<input type="number" id="dividend_income" placeholder="0">
+<input type="text" id="dividend_income" placeholder="0">
+</div>
+<div class="input-group">
+<label>Retirement Distributions ($)</label>
+<input type="text" id="retirement_distributions" placeholder="0">
 </div>
 </div>
 
@@ -291,19 +165,19 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <div class="input-grid">
 <div class="input-group">
 <label>Short-Term Capital Gains ($)</label>
-<input type="number" id="st_gains" placeholder="0">
+<input type="text" id="st_gains" placeholder="0">
 </div>
 <div class="input-group">
 <label>Long-Term Capital Gains ($)</label>
-<input type="number" id="lt_gains" placeholder="0">
+<input type="text" id="lt_gains" placeholder="0">
 </div>
 <div class="input-group">
 <label>Unrealized Losses ($)</label>
-<input type="number" id="unrealized_losses" placeholder="0">
+<input type="text" id="unrealized_losses" placeholder="0">
 </div>
 <div class="input-group">
 <label>Portfolio Value ($)</label>
-<input type="number" id="portfolio_value" placeholder="0">
+<input type="text" id="portfolio_value" placeholder="0">
 </div>
 </div>
 
@@ -311,20 +185,71 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <div class="input-grid">
 <div class="input-group">
 <label>Charitable Contributions ($)</label>
-<input type="number" id="charitable" placeholder="0">
+<input type="text" id="charitable" placeholder="0">
 </div>
 <div class="input-group">
-<label>State & Local Taxes ($)</label>
-<input type="number" id="salt" placeholder="0">
+<label>State &amp; Local Taxes ($)</label>
+<input type="text" id="salt" placeholder="0">
 </div>
 <div class="input-group">
 <label>Retirement Contributions ($)</label>
-<input type="number" id="retirement_contrib" placeholder="0">
+<input type="text" id="retirement_contrib" placeholder="0">
 </div>
 <div class="input-group">
 <label>Property Values ($)</label>
-<input type="number" id="property_values" placeholder="0">
+<input type="text" id="property_values" placeholder="0">
 </div>
+</div>
+
+<div class="section-title">Strategy Parameters</div>
+<div class="input-grid">
+<div class="input-group">
+<label>Implementation Date</label>
+<input type="date" id="implementation_date" value="2026-01-01">
+</div>
+<div class="input-group">
+<label>Available Capital for Strategies ($)</label>
+<input type="text" id="available_capital" placeholder="Amount willing to invest">
+</div>
+<div class="input-group">
+<label>Beta Selection</label>
+<select id="beta_selection">
+<option value="1">Beta 1 (S&amp;P 500)</option>
+<option value="0.5">Beta 0.5 (CASH/S&amp;P 500)</option>
+<option value="0">Beta 0 (Zero Beta)</option>
+</select>
+</div>
+<div class="input-group">
+<label>Brooklyn Preset</label>
+<select id="brooklyn_preset">
+<option value="">-- Select --</option>
+</select>
+</div>
+<div class="input-group hidden" id="custom-leverage-section">
+<label>Custom Leverage (decimal)</label>
+<input type="number" id="custom_leverage_value" step="0.05" placeholder="e.g. 1.0">
+</div>
+<div class="input-group hidden">
+<label>Max Leverage (decimal)</label>
+<input type="number" id="max_leverage" step="0.05" value="0.3" placeholder="e.g. 2.25">
+</div>
+</div>
+
+<div class="section-title">Oil &amp; Gas Parameters</div>
+<div class="input-grid">
+<div class="input-group">
+<label>Max Oil &amp; Gas Investment ($)</label>
+<input type="text" id="oil_gas_max" placeholder="0">
+</div>
+<div class="input-group hidden">
+<label>O&amp;G Offset Rate</label>
+<input type="number" id="oil_gas_rate" step="0.01" value="0.95">
+</div>
+</div>
+
+<div style="margin-top:30px;display:flex;gap:15px">
+<button class="btn btn-secondary" onclick="showPage('page1')">&larr; Back</button>
+<button class="btn btn-primary" onclick="showPage('page3')">View Strategy Summary &rarr;</button>
 </div>
 </div>
 
