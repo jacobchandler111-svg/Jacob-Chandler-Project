@@ -7,7 +7,7 @@
 // SECTION 1: BROOKLYN STRATEGY DATA & REGRESSION ENGINE
 // ============================================================
 
-const BROOKLYN_STRATEGIES = {
+const BROOKLYN_STRATEGIES = {h
   beta1: {
     id: 'brooklyn_beta1',
     name: 'S&P 500 - Brooklyn Managed - Beta 1',
@@ -487,7 +487,7 @@ function computeBrookhavenFees(implementationDate) {
   // Pro-rata: remaining time in year from implementation date
   var fraction = 1;
   if (implementationDate) {
-    var impl = new Date(implementationDate);
+    var dp = implementationDate.split('-'); var impl = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
     var yearEnd = new Date(impl.getFullYear(), 11, 31);
     var yearStart = new Date(impl.getFullYear(), 0, 1);
     var msInYear = yearEnd - yearStart;
