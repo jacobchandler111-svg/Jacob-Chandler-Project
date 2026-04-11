@@ -39,7 +39,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 .progress-fill{height:100%;background:linear-gradient(90deg,#1565c0,#42a5f5);border-radius:3px;transition:width 0.3s}
 .match-badge{color:#4caf50;font-size:0.95em;margin-top:10px}
 .results-table-section{margin-bottom:28px}
-.table-title{font-size:1.15em;font-weight:600;color:#90caf9;margin-bottom:10px;letter-spacing:0.3px}
+.table-title{font-size:1.15em;font-weight:600;color:#90caf9;margin-bottom:10px}
 .results-table{width:100%;border-collapse:collapse;background:#111d35;border-radius:10px;overflow:hidden;border:1px solid #1a3a6e}
 .results-table td{padding:12px 18px;border-bottom:1px solid #1a3a6e;font-size:0.95em}
 .results-table td:first-child{color:#8899aa;width:55%}
@@ -79,13 +79,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <p style="color:#8899aa;margin-bottom:15px">Answer the following questions to identify which strategies apply to your situation.</p>
 <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
 <div class="match-badge"><span id="match-count">0</span> strategies matched</div>
-<div class="section-title">Income & Filing</div>
+<div class="section-title">Income &amp; Filing</div>
 <div id="q-income"></div>
 <div class="section-title">Investments</div>
 <div id="q-investments"></div>
-<div class="section-title">Brooklyn Strategy</div>
+<div class="section-title">Brooklyn Strategy Options</div>
 <div id="q-brooklyn"></div>
-<div class="section-title">Oil & Gas</div>
+<div class="section-title">Oil &amp; Gas Strategy</div>
 <div id="q-oilgas"></div>
 <div class="section-title">Real Estate</div>
 <div id="q-realestate"></div>
@@ -107,25 +107,15 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 <div class="input-grid">
 <div class="input-group">
 <label>Tax Year</label>
-<select id="tax_year">
-<option value="2026" selected>2026</option>
-<option value="2025">2025</option>
-</select>
+<select id="tax_year"><option value="2026" selected>2026</option><option value="2025">2025</option></select>
 </div>
 <div class="input-group">
 <label>Filing Status</label>
-<select id="filing_status">
-<option>Single</option>
-<option>Married Filing Jointly</option>
-<option>Married Filing Separately</option>
-<option>Head of Household</option>
-</select>
+<select id="filing_status"><option>Single</option><option>Married Filing Jointly</option><option>Married Filing Separately</option><option>Head of Household</option></select>
 </div>
 <div class="input-group">
 <label>State</label>
-<select id="state">
-<option value="">-- Select State --</option><option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option><option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option><option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option><option value="WY">WY</option>
-</select>
+<select id="state"><option value="">-- Select State --</option><option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option><option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option><option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option><option value="WY">WY</option></select>
 </div>
 <div class="input-group">
 <label>Taxpayer Age</label>
@@ -135,116 +125,44 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 
 <div class="section-title">Income Sources</div>
 <div class="input-grid">
-<div class="input-group">
-<label>W-2 Wages ($)</label>
-<input type="text" id="w2_wages" placeholder="0">
-</div>
-<div class="input-group">
-<label>Self-Employment Income ($)</label>
-<input type="text" id="se_income" placeholder="0">
-</div>
-<div class="input-group">
-<label>Business Revenue / Distributions ($)</label>
-<input type="text" id="biz_revenue" placeholder="0">
-</div>
-<div class="input-group">
-<label>Rental Income ($)</label>
-<input type="text" id="rental_income" placeholder="0">
-</div>
-<div class="input-group">
-<label>Dividend Income ($)</label>
-<input type="text" id="dividend_income" placeholder="0">
-</div>
-<div class="input-group">
-<label>Retirement Distributions ($)</label>
-<input type="text" id="retirement_distributions" placeholder="0">
-</div>
+<div class="input-group"><label>W-2 Wages ($)</label><input type="text" id="w2_wages" placeholder="0"></div>
+<div class="input-group"><label>Self-Employment Income ($)</label><input type="text" id="se_income" placeholder="0"></div>
+<div class="input-group"><label>Business Revenue / Distributions ($)</label><input type="text" id="biz_revenue" placeholder="0"></div>
+<div class="input-group"><label>Rental Income ($)</label><input type="text" id="rental_income" placeholder="0"></div>
+<div class="input-group"><label>Dividend Income ($)</label><input type="text" id="dividend_income" placeholder="0"></div>
+<div class="input-group"><label>Retirement Distributions ($)</label><input type="text" id="retirement_distributions" placeholder="0"></div>
 </div>
 
 <div class="section-title">Capital Gains</div>
 <div class="input-grid">
-<div class="input-group">
-<label>Short-Term Capital Gains ($)</label>
-<input type="text" id="st_gains" placeholder="0">
-</div>
-<div class="input-group">
-<label>Long-Term Capital Gains ($)</label>
-<input type="text" id="lt_gains" placeholder="0">
-</div>
-<div class="input-group">
-<label>Unrealized Losses ($)</label>
-<input type="text" id="unrealized_losses" placeholder="0">
-</div>
-<div class="input-group">
-<label>Portfolio Value ($)</label>
-<input type="text" id="portfolio_value" placeholder="0">
-</div>
+<div class="input-group"><label>Short-Term Capital Gains ($)</label><input type="text" id="st_gains" placeholder="0"></div>
+<div class="input-group"><label>Long-Term Capital Gains ($)</label><input type="text" id="lt_gains" placeholder="0"></div>
+<div class="input-group"><label>Unrealized Losses ($)</label><input type="text" id="unrealized_losses" placeholder="0"></div>
+<div class="input-group"><label>Portfolio Value ($)</label><input type="text" id="portfolio_value" placeholder="0"></div>
 </div>
 
 <div class="section-title">Deductions</div>
 <div class="input-grid">
-<div class="input-group">
-<label>Charitable Contributions ($)</label>
-<input type="text" id="charitable" placeholder="0">
-</div>
-<div class="input-group">
-<label>State &amp; Local Taxes ($)</label>
-<input type="text" id="salt" placeholder="0">
-</div>
-<div class="input-group">
-<label>Retirement Contributions ($)</label>
-<input type="text" id="retirement_contrib" placeholder="0">
-</div>
-<div class="input-group">
-<label>Property Values ($)</label>
-<input type="text" id="property_values" placeholder="0">
-</div>
+<div class="input-group"><label>Charitable Contributions ($)</label><input type="text" id="charitable" placeholder="0"></div>
+<div class="input-group"><label>State &amp; Local Taxes ($)</label><input type="text" id="salt" placeholder="0"></div>
+<div class="input-group"><label>Retirement Contributions ($)</label><input type="text" id="retirement_contrib" placeholder="0"></div>
+<div class="input-group"><label>Property Values ($)</label><input type="text" id="property_values" placeholder="0"></div>
 </div>
 
 <div class="section-title">Strategy Parameters</div>
 <div class="input-grid">
-<div class="input-group">
-<label>Implementation Date</label>
-<input type="date" id="implementation_date" value="2026-01-01">
-</div>
-<div class="input-group">
-<label>Available Capital for Strategies ($)</label>
-<input type="text" id="available_capital" placeholder="Amount willing to invest">
-</div>
-<div class="input-group">
-<label>Beta Selection</label>
-<select id="beta_selection">
-<option value="1">Beta 1 (S&amp;P 500)</option>
-<option value="0.5">Beta 0.5 (CASH/S&amp;P 500)</option>
-<option value="0">Beta 0 (Zero Beta)</option>
-</select>
-</div>
-<div class="input-group">
-<label>Brooklyn Preset</label>
-<select id="brooklyn_preset">
-<option value="">-- Select --</option>
-</select>
-</div>
-<div class="input-group hidden" id="custom-leverage-section">
-<label>Custom Leverage (decimal)</label>
-<input type="number" id="custom_leverage_value" step="0.05" placeholder="e.g. 1.0">
-</div>
-<div class="input-group hidden">
-<label>Max Leverage (decimal)</label>
-<input type="number" id="max_leverage" step="0.05" value="0.3" placeholder="e.g. 2.25">
-</div>
+<div class="input-group"><label>Implementation Date</label><input type="date" id="implementation_date" value="2026-01-01"></div>
+<div class="input-group"><label>Available Capital for Strategies ($)</label><input type="text" id="available_capital" placeholder="Amount willing to invest"></div>
+<div class="input-group"><label>Beta Selection</label><select id="beta_selection"><option value="1">Beta 1 (S&amp;P 500)</option><option value="0.5">Beta 0.5 (CASH/S&amp;P 500)</option><option value="0">Beta 0 (Zero Beta)</option></select></div>
+<div class="input-group"><label>Brooklyn Preset</label><select id="brooklyn_preset"><option value="">-- Select --</option></select></div>
+<div class="input-group hidden" id="custom-leverage-section"><label>Custom Leverage (decimal)</label><input type="number" id="custom_leverage_value" step="0.05" placeholder="e.g. 1.0"></div>
+<div class="input-group hidden"><label>Max Leverage</label><input type="number" id="max_leverage" step="0.05" value="0.3"></div>
 </div>
 
 <div class="section-title">Oil &amp; Gas Parameters</div>
 <div class="input-grid">
-<div class="input-group">
-<label>Max Oil &amp; Gas Investment ($)</label>
-<input type="text" id="oil_gas_max" placeholder="0">
-</div>
-<div class="input-group hidden">
-<label>O&amp;G Offset Rate</label>
-<input type="number" id="oil_gas_rate" step="0.01" value="0.95">
-</div>
+<div class="input-group"><label>Max Oil &amp; Gas Investment ($)</label><input type="text" id="oil_gas_max" placeholder="0"></div>
+<div class="input-group hidden"><label>O&amp;G Offset Rate</label><input type="number" id="oil_gas_rate" step="0.01" value="0.95"></div>
 </div>
 
 <div style="margin-top:30px;display:flex;gap:15px">
