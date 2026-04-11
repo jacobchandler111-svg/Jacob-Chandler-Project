@@ -806,7 +806,7 @@ function setupCurrencyInput(input, mapTo) {
 // Setup currency formatting on Page 2 number inputs
 function setupPage2CurrencyInputs() {
   var currencyFields = ['w2_wages','se_income','biz_revenue','rental_income','dividend_income',
-    'retirement_distributions','st_gains','lt_gains','unrealized_losses','portfolio_value',
+    'retirement_distributions','st_gains','lt_gains','portfolio_value',
     'property_values','charitable','salt','retirement_contrib','available_capital','oil_gas_max'];
   currencyFields.forEach(function(fieldId) {
     var el = document.getElementById(fieldId);
@@ -1146,7 +1146,7 @@ function updateBrooklynUI() {
 
 function getFormInputs() {
   var fields = ['w2_wages','se_income','biz_revenue','rental_income',
-    'dividend_income','retirement_distributions','st_gains','lt_gains','unrealized_losses','portfolio_value',
+    'dividend_income','retirement_distributions','st_gains','lt_gains','portfolio_value',
     'property_values','charitable','salt','retirement_contrib','taxpayer_age','state',
     'implementation_date','available_capital','max_leverage','beta_selection',
     'brooklyn_preset','custom_leverage_value','filing_status','tax_year',
@@ -1409,3 +1409,4 @@ async function loadStrategies() {
 buildQuestions();
 loadStrategies();
 loadTaxBrackets();
+
