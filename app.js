@@ -459,7 +459,7 @@ function computeBaselineTax(inputs) {
   };
 }
 
-function computeTaxAfterStrategies(inputs, totalSTLosses) {
+function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset) {
   const fm = {
     'Single': 'single', 'Married Filing Jointly': 'married_joint',
     'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household'
@@ -491,12 +491,13 @@ function computeTaxAfterStrategies(inputs, totalSTLosses) {
   const ordinaryOffset = Math.min(remainingLoss, 3000);
   remainingLoss -= ordinaryOffset;
 
-  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset;
+  const ogOffset = oilGasOffset || 0;
+
+  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset;
   const totalIncome = ordinaryIncome + adjLtg;
   const sd = getStandardDeduction(year, f);
   const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
 
-  // Federal tax
   let federalTax = calculateTax(taxableOrdinary, f, year);
   federalTax += calculateLtcgTax(adjLtg, taxableOrdinary, f, year);
   if (se > 0) federalTax += se * getSeTaxMultiplier(year) * getSeTaxRate(year);
@@ -506,7 +507,6 @@ function computeTaxAfterStrategies(inputs, totalSTLosses) {
     federalTax += Math.min(div + adjLtg + adjStg + rent, niitIncome - niitThreshold) * 0.038;
   }
 
-  // State tax
   let stateTax = calculateStateTax(ordinaryIncome, stateCode, year, f);
   stateTax += calculateWaCapGainsTax(adjLtg, stateCode, year);
 
@@ -520,10 +520,11 @@ function computeTaxAfterStrategies(inputs, totalSTLosses) {
     carryForwardLoss: Math.round(remainingLoss)
   };
 }
-
-// ============================================================
 // ================================================================
-// SECTION 3: SOLVER FRAMEWORK
+// ================================================================
+
+// ================================================================
+// SECTION 3: SOLVER FRAMEWORK (Brooklyn + Oil & Gas)
 // ================================================================
 
 function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, maxLeverage, implementationDate) {
@@ -531,34 +532,76 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   let bestTax = baseline.tax;
   let bestAllocation = [];
   let bestLosses = 0;
+  let bestOilGasOffset = 0;
+
+  const ogMaxInvest = parseFloat(inputs.oil_gas_max || 0);
+  const ogRate = parseFloat(inputs.oil_gas_rate || 0.95);
 
   const strategies = enabledStrategies.filter(s => {
     const strat = BROOKLYN_STRATEGIES[s.key];
     return strat != null;
   });
 
+  const steps = 20;
+  const ogSteps = 10;
+
   for (const s of strategies) {
     const strat = BROOKLYN_STRATEGIES[s.key];
     if (!strat) continue;
-    const maxInvest = Math.min(availableCapital, s.maxInvestment || availableCapital);
-    const steps = 20;
-    for (let step = 0; step <= steps; step++) {
-      const invest = (maxInvest / steps) * step;
+    const maxBrooklyn = Math.min(availableCapital, s.maxInvestment || availableCapital);
+
+    for (let bStep = 0; bStep <= steps; bStep++) {
+      const brooklynInvest = (maxBrooklyn / steps) * bStep;
       const lev = s.customLeverage || maxLeverage || 0.3;
       const leverageMinInvestment = getMinInvestmentForLeverage(s.key, lev);
-      if (invest > 0 && invest < leverageMinInvestment) continue;
-      const losses = computeBrooklynLoss(s.key, lev, invest, implementationDate);
-      const result = computeTaxAfterStrategies(inputs, losses);
-      if (result.tax < bestTax) {
-        bestTax = result.tax;
-        bestAllocation = [{ key: s.key, leverage: lev, investment: invest, losses: losses }];
-        bestLosses = losses;
+      if (brooklynInvest > 0 && brooklynInvest < leverageMinInvestment) continue;
+
+      const losses = computeBrooklynLoss(s.key, lev, brooklynInvest, implementationDate);
+
+      const remainingForOG = Math.min(ogMaxInvest, availableCapital - brooklynInvest);
+      const ogMax = Math.max(0, remainingForOG);
+      const ogStepSize = ogMax > 0 ? ogMax / ogSteps : 0;
+
+      for (let ogStep = 0; ogStep <= (ogMax > 0 ? ogSteps : 0); ogStep++) {
+        const ogInvest = ogStepSize * ogStep;
+        const ogOffset = ogInvest * ogRate;
+
+        const result = computeTaxAfterStrategies(inputs, losses, ogOffset);
+        if (result.tax < bestTax) {
+          bestTax = result.tax;
+          bestAllocation = [{
+            key: s.key, leverage: lev, investment: brooklynInvest,
+            losses: losses, oilGasInvestment: ogInvest, oilGasOffset: ogOffset
+          }];
+          bestLosses = losses;
+          bestOilGasOffset = ogOffset;
+        }
       }
     }
   }
 
-  // --- Minimum Leverage Optimization ---
-  if (bestAllocation.length > 0) {
+  // Oil & Gas only (no Brooklyn)
+  if (ogMaxInvest > 0) {
+    const ogOnlyMax = Math.min(ogMaxInvest, availableCapital);
+    const ogOnlyStep = ogOnlyMax / ogSteps;
+    for (let ogStep = 1; ogStep <= ogSteps; ogStep++) {
+      const ogInvest = ogOnlyStep * ogStep;
+      const ogOffset = ogInvest * ogRate;
+      const result = computeTaxAfterStrategies(inputs, 0, ogOffset);
+      if (result.tax < bestTax) {
+        bestTax = result.tax;
+        bestAllocation = [{
+          key: null, leverage: 0, investment: 0, losses: 0,
+          oilGasInvestment: ogInvest, oilGasOffset: ogOffset
+        }];
+        bestLosses = 0;
+        bestOilGasOffset = ogOffset;
+      }
+    }
+  }
+
+  // Minimum Leverage Optimization
+  if (bestAllocation.length > 0 && bestAllocation[0].key) {
     const bestEntry = bestAllocation[0];
     const targetTax = bestTax;
     let minLev = bestEntry.leverage;
@@ -568,10 +611,13 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
       const leverageMinInvestment = getMinInvestmentForLeverage(bestEntry.key, tryLev);
       if (bestEntry.investment > 0 && bestEntry.investment < leverageMinInvestment) continue;
       const losses = computeBrooklynLoss(bestEntry.key, tryLev, bestEntry.investment, implementationDate);
-      const result = computeTaxAfterStrategies(inputs, losses);
+      const result = computeTaxAfterStrategies(inputs, losses, bestEntry.oilGasOffset || 0);
       if (result.tax <= targetTax + 100) {
         minLev = tryLev;
-        minLevAllocation = { key: bestEntry.key, leverage: tryLev, investment: bestEntry.investment, losses: losses };
+        minLevAllocation = {
+          key: bestEntry.key, leverage: tryLev, investment: bestEntry.investment,
+          losses: losses, oilGasInvestment: bestEntry.oilGasInvestment || 0, oilGasOffset: bestEntry.oilGasOffset || 0
+        };
       } else {
         break;
       }
@@ -581,6 +627,10 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     }
   }
 
+  const totalInvestment = bestAllocation.length > 0
+    ? (bestAllocation[0].investment || 0) + (bestAllocation[0].oilGasInvestment || 0)
+    : 0;
+
   return {
     baselineTax: baseline.tax,
     baselineFederalTax: baseline.federalTax,
@@ -589,14 +639,14 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     savings: baseline.tax - bestTax,
     allocation: bestAllocation,
     totalLosses: bestLosses,
+    totalOilGasOffset: bestOilGasOffset,
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
-    roi: bestAllocation.length > 0 && bestAllocation[0].investment > 0
-      ? ((baseline.tax - bestTax) / bestAllocation[0].investment * 100).toFixed(1) + '%'
-      : '0%'
+    roi: totalInvestment > 0 ? ((baseline.tax - bestTax) / totalInvestment * 100).toFixed(1) + '%' : '0%'
   };
 }
+
 // ================================================================
 // SECTION 4: CONDITIONAL QUESTIONNAIRE & UI
 // ================================================================
@@ -610,9 +660,9 @@ const questions = {
       followUp: [
         {
           id: 'w2_amount',
-          text: 'How much did you earn from your W-2 job(s)?',
-          trigger: 'w2_amount_entered',
-          inputField: { id: 'q_w2_wages', label: 'W-2 Income ($)', type: 'number', placeholder: 'e.g. 150000', mapTo: 'w2_wages' }
+          text: 'How much do you earn from W-2 jobs?',
+          trigger: 'w2_employee',
+          inputField: { type: 'number', placeholder: 'e.g. 150000', label: 'Annual W-2 Income ($)', mapTo: 'w2_wages' }
         }
       ]
     },
@@ -621,144 +671,57 @@ const questions = {
       text: 'Do you have multiple sources of income?',
       trigger: 'multiple_income',
       followUp: [
-        {
-          id: 'has_rental_income',
-          text: 'Do you receive rental income from properties?',
-          trigger: 'rental_property'
-        },
-        {
-          id: 'has_business_income',
-          text: 'Do you own a business that generates income?',
-          trigger: 'has_business'
-        },
-        {
-          id: 'has_self_employment',
-          text: 'Are you self-employed (freelance, 1099, etc.)?',
-          trigger: 'self_employed'
-        },
-        {
-          id: 'has_retirement_income',
-          text: 'Are you receiving retirement benefits or distributions?',
-          trigger: 'retirement_income'
-        },
-        {
-          id: 'has_dividend_income',
-          text: 'Do you receive significant dividend income?',
-          trigger: 'dividend_income'
-        }
+        { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property' },
+        { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business' },
+        { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed' },
+        { id: 'has_retirement_income', text: 'Are you receiving retirement benefits or distributions?', trigger: 'retirement_income' },
+        { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income' }
       ]
     },
-    {
-      id: 'high_income',
-      text: 'Is your annual income above $250,000?',
-      trigger: 'high_income'
-    },
-    {
-      id: 'variable_income',
-      text: 'Does your income vary significantly year to year?',
-      trigger: 'variable_income'
-    }
+    { id: 'high_income', text: 'Is your annual income above $250,000?', trigger: 'high_income' },
+    { id: 'variable_income', text: 'Does your income vary significantly year to year?', trigger: 'variable_income' }
   ],
   investments: [
-    {
-      id: 'appreciated_asset',
-      text: 'Do you have appreciated assets (stocks, property, etc.)?',
-      trigger: 'appreciated_asset'
-    },
-    {
-      id: 'stock_options',
-      text: 'Do you have stock options (ISO or NSO)?',
-      trigger: 'stock_options'
-    }
+    { id: 'appreciated_asset', text: 'Do you have appreciated assets (stocks, property, etc.)?', trigger: 'appreciated_asset' },
+    { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' }
   ],
   brooklyn: [
-    {
-      id: 'advisor_managed',
-      text: 'Is the portfolio advisor managed?',
-      trigger: 'advisor_managed'
-    },
-    {
-      id: 'custom_leverage',
-      text: 'Are you interested in a custom leverage strategy?',
-      trigger: 'custom_leverage'
-    }
+    { id: 'advisor_managed', text: 'Do you want an advisor-managed strategy?', trigger: 'advisor_managed' },
+    { id: 'custom_leverage', text: 'Do you want to set a custom leverage level?', trigger: 'custom_leverage' }
+  ],
+  oilgas: [
+    { id: 'interested_oil_gas', text: 'Are you interested in oil & gas investments for income offset?', trigger: 'interested_oil_gas' }
   ],
   realestate: [
+    { id: 'real_estate_sale', text: 'Are you planning to sell real estate this year?', trigger: 'real_estate_sale' },
     {
-      id: 'real_estate_sale',
-      text: 'Are you planning to sell real estate?',
-      trigger: 'real_estate_sale'
-    },
-    {
-      id: 'cost_segregation',
-      text: 'Have you considered cost segregation studies?',
+      id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?',
       trigger: 'cost_segregation',
       showWhen: function(answers) { return answers.rental_property === true; }
     },
-    {
-      id: 'opportunity_zone',
-      text: 'Are you interested in Opportunity Zone investments?',
-      trigger: 'opportunity_zone'
-    }
+    { id: 'opportunity_zone', text: 'Are you interested in Opportunity Zone investments?', trigger: 'opportunity_zone' }
   ],
   retirement: [
-    {
-      id: 'retirement_planning',
-      text: 'Are you actively planning for retirement?',
-      trigger: 'retirement_planning'
-    },
-    {
-      id: 'over_50',
-      text: 'Are you over 50 years old?',
-      trigger: 'over_50'
-    },
-    {
-      id: 'max_401k',
-      text: 'Are you maxing out your 401(k)?',
-      trigger: 'max_401k'
-    }
+    { id: 'retirement_planning', text: 'Are you actively planning for retirement?', trigger: 'retirement_planning' },
+    { id: 'over_50', text: 'Are you over 50 years old?', trigger: 'over_50' },
+    { id: 'max_401k', text: 'Are you maximizing your 401(k) contributions?', trigger: 'max_401k' }
   ],
   business: [
     {
-      id: 'business_owner',
-      text: 'Do you own or operate a business?',
-      trigger: 'has_business',
-      showWhen: function(answers) { return answers.has_business === undefined; },
+      id: 'business_owner', text: 'Do you own or operate a business?', trigger: 'has_business',
       followUp: [
-        {
-          id: 's_corp_fu',
-          text: 'Is your business an S Corporation?',
-          trigger: 's_corp'
-        },
-        {
-          id: 'partnership_fu',
-          text: 'Are you in a partnership or LLC?',
-          trigger: 'partnership'
-        }
+        { id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' },
+        { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }
       ]
     },
-    {
-      id: 's_corp',
-      text: 'Is your business an S Corporation?',
-      trigger: 's_corp',
-      showWhen: function(answers) { return answers.has_business === true; }
-    },
-    {
-      id: 'partnership',
-      text: 'Are you in a partnership or LLC?',
-      trigger: 'partnership',
-      showWhen: function(answers) { return answers.has_business === true; }
-    }
+    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp', showWhen: function(answers) { return answers.has_business === true; } },
+    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership', showWhen: function(answers) { return answers.has_business === true; } }
   ]
 };
 
 const sectionMap = {
-  income: 'q-income',
-  investments: 'q-investments',
-  brooklyn: 'q-brooklyn',
-  realestate: 'q-realestate',
-  retirement: 'q-retirement',
-  business: 'q-business'
+  income: 'q-income', investments: 'q-investments', brooklyn: 'q-brooklyn',
+  oilgas: 'q-oilgas', realestate: 'q-realestate', retirement: 'q-retirement', business: 'q-business'
 };
 
 let userAnswers = {};
@@ -779,85 +742,56 @@ function buildQuestions() {
 function renderQuestion(container, q, section) {
   const card = document.createElement('div');
   card.className = 'question-card';
-  card.id = 'qcard-' + q.id;
-
+  card.setAttribute('data-question', q.id);
   const textDiv = document.createElement('div');
   textDiv.className = 'question-text';
   textDiv.textContent = q.text;
   card.appendChild(textDiv);
-
   const toggleDiv = document.createElement('div');
   toggleDiv.className = 'toggle-group';
-
   const yesBtn = document.createElement('button');
   yesBtn.className = 'toggle-btn yes' + (userAnswers[q.trigger] === true ? ' selected' : '');
   yesBtn.textContent = 'Yes';
   yesBtn.onclick = function() { setAnswer(q.id, q.trigger, true, this, q, section); };
-
   const noBtn = document.createElement('button');
   noBtn.className = 'toggle-btn no' + (userAnswers[q.trigger] === false ? ' selected' : '');
   noBtn.textContent = 'No';
   noBtn.onclick = function() { setAnswer(q.id, q.trigger, false, this, q, section); };
-
   toggleDiv.appendChild(yesBtn);
   toggleDiv.appendChild(noBtn);
   card.appendChild(toggleDiv);
-
-  // Follow-up container
-  if (q.followUp && q.followUp.length > 0) {
-    const followUpDiv = document.createElement('div');
-    followUpDiv.className = 'follow-up-container';
-    followUpDiv.id = 'followup-' + q.id;
-    followUpDiv.style.display = userAnswers[q.trigger] === true ? 'block' : 'none';
-    q.followUp.forEach(fq => {
-      renderFollowUpQuestion(followUpDiv, fq, section);
-    });
-    card.appendChild(followUpDiv);
-  }
-
-  // Inline input field
-  if (q.inputField) {
-    renderInlineInput(card, q);
-  }
-
   container.appendChild(card);
+  if (q.followUp && userAnswers[q.trigger] === true) {
+    const followContainer = document.createElement('div');
+    followContainer.className = 'follow-up-container';
+    followContainer.id = 'followup-' + q.id;
+    q.followUp.forEach(fq => { renderFollowUpQuestion(followContainer, fq, section); });
+    container.appendChild(followContainer);
+  }
 }
 
 function renderFollowUpQuestion(container, fq, section) {
   const card = document.createElement('div');
-  card.className = 'question-card follow-up-question';
-  card.id = 'qcard-' + fq.id;
-  card.style.marginLeft = '20px';
-  card.style.borderLeft = '3px solid #f59e0b';
-  card.style.paddingLeft = '15px';
-
+  card.className = 'follow-up-question';
+  card.setAttribute('data-question', fq.id);
   const textDiv = document.createElement('div');
   textDiv.className = 'question-text';
   textDiv.textContent = fq.text;
   card.appendChild(textDiv);
-
   const toggleDiv = document.createElement('div');
   toggleDiv.className = 'toggle-group';
-
   const yesBtn = document.createElement('button');
   yesBtn.className = 'toggle-btn yes' + (userAnswers[fq.trigger] === true ? ' selected' : '');
   yesBtn.textContent = 'Yes';
   yesBtn.onclick = function() { setAnswer(fq.id, fq.trigger, true, this, fq, section); };
-
   const noBtn = document.createElement('button');
   noBtn.className = 'toggle-btn no' + (userAnswers[fq.trigger] === false ? ' selected' : '');
   noBtn.textContent = 'No';
   noBtn.onclick = function() { setAnswer(fq.id, fq.trigger, false, this, fq, section); };
-
   toggleDiv.appendChild(yesBtn);
   toggleDiv.appendChild(noBtn);
   card.appendChild(toggleDiv);
-
-  // Inline input for follow-up questions
-  if (fq.inputField) {
-    renderInlineInput(card, fq);
-  }
-
+  if (fq.inputField) { renderInlineInput(card, fq); }
   container.appendChild(card);
 }
 
@@ -867,73 +801,46 @@ function renderInlineInput(card, q) {
   inputDiv.id = 'input-wrap-' + q.id;
   inputDiv.style.display = userAnswers[q.trigger] === true ? 'block' : 'none';
   inputDiv.style.marginTop = '10px';
-
   const label = document.createElement('label');
   label.textContent = q.inputField.label;
   label.style.color = '#b0bec5';
   label.style.fontSize = '0.9em';
-  label.style.display = 'block';
-  label.style.marginBottom = '4px';
-
   const input = document.createElement('input');
   input.type = q.inputField.type || 'text';
-  input.id = q.inputField.id;
   input.placeholder = q.inputField.placeholder || '';
-  input.style.cssText = 'width:100%;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:1em;';
-  input.addEventListener('input', function() {
-    if (q.inputField.mapTo) {
-      syncToPage2(q.inputField.mapTo, this.value);
-    }
-  });
-
+  input.id = 'inline-' + q.id;
+  input.style.cssText = 'width:100%;padding:8px;margin-top:4px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;';
   if (q.inputField.mapTo) {
-    const existing = document.getElementById(q.inputField.mapTo);
-    if (existing && existing.value) {
-      input.value = existing.value;
-    }
+    input.addEventListener('input', function() { syncToPage2(q.inputField.mapTo, this.value); });
   }
-
   inputDiv.appendChild(label);
   inputDiv.appendChild(input);
   card.appendChild(inputDiv);
 }
-// --- Set Answer with Conditional Logic ---
-function setAnswer(id, trigger, val, btn, questionObj, section) {
-  userAnswers[trigger] = val;
-  btn.parentElement.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-
-  // Show/hide follow-up questions
+function setAnswer(questionId, trigger, value, btn, questionObj, section) {
+  userAnswers[trigger] = value;
+  const card = btn.closest('.question-card') || btn.closest('.follow-up-question');
+  if (card) {
+    card.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  }
+  const inputWrap = document.getElementById('input-wrap-' + questionId);
+  if (inputWrap) { inputWrap.style.display = value ? 'block' : 'none'; }
   if (questionObj && questionObj.followUp) {
-    const followUpDiv = document.getElementById('followup-' + id);
-    if (followUpDiv) {
-      followUpDiv.style.display = val ? 'block' : 'none';
-      if (!val) {
-        questionObj.followUp.forEach(fq => {
-          delete userAnswers[fq.trigger];
+    const existingFollowUp = document.getElementById('followup-' + questionId);
+    if (value && !existingFollowUp) {
+      const container = document.getElementById(sectionMap[section]);
+      if (container) {
+        container.innerHTML = '';
+        questions[section].forEach(q => {
+          if (q.showWhen && !q.showWhen(userAnswers)) return;
+          renderQuestion(container, q, section);
         });
       }
-    }
+    } else if (!value && existingFollowUp) { existingFollowUp.remove(); }
   }
-
-  // Show/hide inline input
-  const inputWrap = document.getElementById('input-wrap-' + id);
-  if (inputWrap) {
-    inputWrap.style.display = val ? 'block' : 'none';
-  }
-
-  // Map appreciated_asset to both LT and ST gain triggers for strategy matching
-  if (trigger === 'appreciated_asset') {
-    userAnswers['long_term_capital_gains'] = val;
-    userAnswers['short_term_gains'] = val;
-  }
-
-  // Rebuild sections with conditional showWhen
   rebuildConditionalSections();
-
-  // Sync Page 2 field visibility
   syncPage2Visibility();
-
   updateProgress();
   updateMatchCount();
   updateBrooklynUI();
@@ -967,70 +874,65 @@ function syncPage2Visibility() {
     rental_property: ['rental_income'],
     dividend_income: ['dividend_income']
   };
-
   Object.entries(fieldVisibility).forEach(([trigger, fieldIds]) => {
     const answered = userAnswers[trigger];
     fieldIds.forEach(fieldId => {
       const inputEl = document.getElementById(fieldId);
       if (!inputEl) return;
-      const wrapper = inputEl.closest('.input-group');
-      if (!wrapper) return;
-      if (answered === false) {
-        wrapper.style.display = 'none';
-        inputEl.value = '';
-      } else {
-        wrapper.style.display = '';
+      const group = inputEl.closest('.input-group');
+      if (group) {
+        if (answered === false) { group.style.display = 'none'; inputEl.value = ''; }
+        else { group.style.display = ''; }
       }
     });
   });
+  const ogField = document.getElementById('oil_gas_max');
+  if (ogField) {
+    const ogGroup = ogField.closest('.input-group');
+    if (ogGroup) { ogGroup.style.display = userAnswers.interested_oil_gas === true ? '' : 'none'; }
+  }
 }
 
 function updateProgress() {
-  let total = 0;
-  let answered = 0;
-  Object.values(questions).forEach(section => {
-    section.forEach(q => {
+  let total = 0, answered = 0;
+  Object.values(questions).forEach(arr => {
+    arr.forEach(q => {
       if (q.showWhen && !q.showWhen(userAnswers)) return;
       total++;
       if (userAnswers[q.trigger] !== undefined) answered++;
-      if (q.followUp && userAnswers[q.trigger] === true) {
-        q.followUp.forEach(fq => {
-          total++;
-          if (userAnswers[fq.trigger] !== undefined) answered++;
-        });
-      }
     });
   });
-  const el = document.getElementById('progress1');
-  if (el) el.style.width = Math.round(answered / Math.max(total, 1) * 100) + '%';
+  const pct = total > 0 ? Math.round(answered / total * 100) : 0;
+  const bar = document.getElementById('progress-fill');
+  if (bar) bar.style.width = pct + '%';
+  const label = document.getElementById('progress-pct');
+  if (label) label.textContent = pct + '%';
 }
 
 function updateMatchCount() {
-  const triggers = Object.keys(userAnswers).filter(k => userAnswers[k]);
+  if (!strategiesData.length) return;
   let count = 0;
   strategiesData.forEach(s => {
-    if (s.triggers && s.triggers.some(t => triggers.includes(t))) count++;
+    if (!s.triggers) return;
+    const matched = s.triggers.every(t => userAnswers[t] === true);
+    if (matched) count++;
   });
-  const el = document.querySelector('.matched-count');
-  if (el) el.textContent = count + ' strategies matched';
+  const el = document.getElementById('match-count');
+  if (el) el.textContent = count;
 }
 
 function updateBrooklynUI() {
-  const betaSection = document.getElementById('beta-selection');
-  const customLevSection = document.getElementById('custom-leverage-section');
-  if (betaSection) {
-    betaSection.style.display = userAnswers.advisor_managed === false ? 'block' : 'none';
-  }
-  if (customLevSection) {
-    customLevSection.style.display = userAnswers.custom_leverage ? 'block' : 'none';
-  }
+  const customLev = userAnswers.custom_leverage;
+  const section = document.getElementById('custom-leverage-section');
+  if (section) { section.classList.toggle('hidden', !customLev); }
 }
 function getFormInputs() {
-  const fields = ['tax_year','filing_status','w2_wages','se_income','biz_revenue','rental_income',
+  const fields = ['w2_wages','se_income','biz_revenue','rental_income',
     'dividend_income','st_gains','lt_gains','unrealized_losses','portfolio_value',
     'property_values','charitable','salt','retirement_contrib','taxpayer_age','state',
     'implementation_date','available_capital','max_leverage','beta_selection',
-    'brooklyn_preset','custom_leverage_value'];
+    'brooklyn_preset','custom_leverage_value','filing_status','tax_year',
+    'oil_gas_max','oil_gas_rate'];
   const inp = {};
   fields.forEach(f => {
     const el = document.getElementById(f);
@@ -1052,14 +954,12 @@ function getSelectedState() {
 function calculateStrategies() {
   const inp = getFormInputs();
   const baseline = computeBaselineTax(inp);
-
   const advisorManaged = userAnswers.advisor_managed === true;
   const beta = parseFloat(inp.beta_selection || '1');
   const stratKey = getBrooklynStrategyKey(advisorManaged, beta);
   const implDate = inp.implementation_date || new Date().toISOString().split('T')[0];
   const availCap = parseFloat(inp.available_capital || 0);
   const customLev = userAnswers.custom_leverage;
-
   let leverage = 0.3;
   if (customLev && inp.custom_leverage_value) {
     leverage = parseFloat(inp.custom_leverage_value);
@@ -1071,7 +971,6 @@ function calculateStrategies() {
     };
     leverage = presetMap[inp.brooklyn_preset] || 0.3;
   }
-
   const enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
   const result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
   displayResults(result, baseline, inp);
@@ -1109,39 +1008,50 @@ function displayResults(result, baseline, inputs) {
   const co = document.getElementById('results-container');
   if (co) {
     co.innerHTML = '';
-    if (result.allocation.length === 0) {
-      co.innerHTML = '<div style="text-align:center;color:#8899aa;padding:40px;">No strategies improved your tax position. Try adjusting inputs or leverage.</div>';
-    } else {
-      result.allocation.forEach(a => {
-        const strat = BROOKLYN_STRATEGIES[a.key];
-        const cd = document.createElement('div');
-        cd.className = 'strategy-result';
-        const longPct = Math.round((1 + a.leverage) * 100);
-        const shortPct = Math.round(a.leverage * 100);
+    result.allocation.forEach(a => {
+      const strat = a.key ? BROOKLYN_STRATEGIES[a.key] : null;
+      const cd = document.createElement('div');
+      cd.style.cssText = 'background:#111d35;border:1px solid #1a3a6e;border-radius:10px;padding:18px;margin-bottom:12px;';
+      let html = '';
 
-        let minLevHtml = '';
-        if (a.minLeverageOption) {
-          const mlo = a.minLeverageOption;
-          const mLongPct = Math.round((1 + mlo.leverage) * 100);
-          const mShortPct = Math.round(mlo.leverage * 100);
-          minLevHtml = '<div style="margin-top:12px;padding:10px;background:#1a2332;border:1px solid #f59e0b;border-radius:6px;">' +
-            '<p style="color:#f59e0b;font-weight:bold;margin:0 0 6px 0;">Lower Leverage Option (same tax savings):</p>' +
-            '<p style="color:#c0c0c0;margin:2px 0;">Leverage: ' + mLongPct + '/' + mShortPct + '</p>' +
-            '<p style="color:#c0c0c0;margin:2px 0;">Losses generated: $' + Math.round(mlo.losses).toLocaleString() + '</p>' +
-            '<p style="color:#c0c0c0;margin:2px 0;">Carryover loss savings: $' + Math.round(a.losses - mlo.losses).toLocaleString() + ' less</p>' +
-            '</div>';
-        }
+      if (a.key && strat) {
+        const dp = strat.dataPoints ? strat.dataPoints.find(dp => dp.leverage === a.leverage) : null;
+        const longPct = dp ? dp.longPct : '';
+        const shortPct = dp ? dp.shortPct : '';
+        html += '<h5 style="color:#f0a500;margin-bottom:8px;">' + (strat ? strat.name : a.key) + '</h5>';
+        html += '<span class="type-badge badge-type">Brooklyn Strategy</span>';
+        html += '<span class="type-badge badge-medium">Leverage: ' + longPct + '/' + shortPct + '</span>';
+        html += '<p style="color:#c0c0c0;margin:8px 0;">Investment: $' + Math.round(a.investment).toLocaleString() + '</p>';
+        html += '<p style="color:#c0c0c0;margin:4px 0;">Short-term losses generated: $' + Math.round(a.losses).toLocaleString() + '</p>';
+      }
 
-        cd.innerHTML = '<h3 style="color:#64b5f6;margin-bottom:8px;">' + (strat ? strat.name : a.key) + '</h3>' +
-          '<span class="type-badge badge-type">Brooklyn Strategy</span>' +
-          '<span class="type-badge badge-medium">Leverage: ' + longPct + '/' + shortPct + '</span>' +
-          '<p style="color:#c0c0c0;margin:8px 0;">Investment: $' + Math.round(a.investment).toLocaleString() + '</p>' +
-          '<p style="color:#c0c0c0;margin:4px 0;">Short-term losses generated: $' + Math.round(a.losses).toLocaleString() + '</p>' +
-          '<p style="color:#4caf50;margin:4px 0;font-weight:bold;">Tax savings: $' + result.savings.toLocaleString() + '</p>' +
-          minLevHtml;
-        co.appendChild(cd);
-      });
-    }
+      if (a.oilGasInvestment > 0) {
+        html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a3a6e;">';
+        html += '<h5 style="color:#4caf50;margin-bottom:8px;">Oil & Gas Strategy</h5>';
+        html += '<span class="type-badge" style="background:#1b5e20;color:#a5d6a7;">Ordinary Income Offset</span>';
+        html += '<p style="color:#c0c0c0;margin:8px 0;">Investment: $' + Math.round(a.oilGasInvestment).toLocaleString() + '</p>';
+        html += '<p style="color:#c0c0c0;margin:4px 0;">Ordinary income offset: $' + Math.round(a.oilGasOffset).toLocaleString() + '</p>';
+        html += '<p style="color:#c0c0c0;margin:4px 0;">Offset rate: ' + (parseFloat(inputs.oil_gas_rate || 0.95) * 100).toFixed(0) + '%</p>';
+        html += '</div>';
+      }
+
+      const totalInvested = (a.investment || 0) + (a.oilGasInvestment || 0);
+      html += '<p style="color:#4caf50;margin:8px 0;font-weight:bold;">Total investment: $' + Math.round(totalInvested).toLocaleString() + '</p>';
+      html += '<p style="color:#4caf50;margin:4px 0;font-weight:bold;">Tax savings: $' + result.savings.toLocaleString() + '</p>';
+
+      if (a.minLeverageOption) {
+        const mlo = a.minLeverageOption;
+        html += '<div style="margin-top:12px;padding:12px;background:#0d1526;border-radius:8px;border:1px solid #2a4a8e;">';
+        html += '<p style="color:#f59e0b;font-weight:bold;margin-bottom:6px;">Lower Leverage Alternative</p>';
+        html += '<p style="color:#c0c0c0;margin:2px 0;">Brooklyn leverage: ' + (mlo.leverage * 100).toFixed(0) + '% (vs ' + (a.leverage * 100).toFixed(0) + '%)</p>';
+        html += '<p style="color:#c0c0c0;margin:2px 0;">Brooklyn losses: $' + Math.round(mlo.losses).toLocaleString() + '</p>';
+        html += '<p style="color:#c0c0c0;margin:2px 0;">Same tax result within $100</p>';
+        html += '</div>';
+      }
+
+      cd.innerHTML = html;
+      co.appendChild(cd);
+    });
   }
 }
 function showPage(pageId) {
@@ -1152,9 +1062,7 @@ function showPage(pageId) {
   const ti = pageId === 'page1' ? 0 : pageId === 'page2' ? 1 : 2;
   const tabs = document.querySelectorAll('.nav-tab');
   if (tabs[ti]) tabs[ti].classList.add('active');
-  if (pageId === 'page2') {
-    syncPage2Visibility();
-  }
+  if (pageId === 'page2') { syncPage2Visibility(); }
   if (pageId === 'page3') calculateStrategies();
 }
 
@@ -1196,15 +1104,20 @@ function exportResults() {
   rp += 'STRATEGIES APPLIED\n';
   rp += '------------------\n';
   result.allocation.forEach(a => {
-    const strat = BROOKLYN_STRATEGIES[a.key];
-    rp += '  Strategy: ' + (strat ? strat.name : a.key) + '\n';
-    rp += '   Investment: $' + Math.round(a.investment).toLocaleString() + '\n';
-    rp += '   Leverage: ' + Math.round((1 + a.leverage) * 100) + '/' + Math.round(a.leverage * 100) + '\n';
-    rp += '   Losses Generated: $' + Math.round(a.losses).toLocaleString() + '\n';
-    if (a.minLeverageOption) {
-      const mlo = a.minLeverageOption;
-      rp += '   Lower Leverage Alternative: ' + Math.round((1 + mlo.leverage) * 100) + '/' + Math.round(mlo.leverage * 100) + '\n';
-      rp += '     Losses: $' + Math.round(mlo.losses).toLocaleString() + ' (saves $' + Math.round(a.losses - mlo.losses).toLocaleString() + ' in carryover)\n';
+    if (a.key) {
+      const strat = BROOKLYN_STRATEGIES[a.key];
+      rp += '  Strategy: ' + (strat ? strat.name : a.key) + '\n';
+      rp += '  Leverage: ' + (a.leverage * 100).toFixed(0) + '%\n';
+      rp += '  Investment: $' + Math.round(a.investment).toLocaleString() + '\n';
+      rp += '  Short-term losses: $' + Math.round(a.losses).toLocaleString() + '\n';
+    }
+    if (a.oilGasInvestment > 0) {
+      rp += '  Oil & Gas Investment: $' + Math.round(a.oilGasInvestment).toLocaleString() + '\n';
+      rp += '  Oil & Gas Offset: $' + Math.round(a.oilGasOffset).toLocaleString() + '\n';
+    }
+    const mlo = a.minLeverageOption;
+    if (mlo) {
+      rp += '  Min Leverage Alternative: ' + (mlo.leverage * 100).toFixed(0) + '% => losses $' + Math.round(mlo.losses).toLocaleString() + ' (in carryover)\n';
     }
     rp += '\n';
   });
