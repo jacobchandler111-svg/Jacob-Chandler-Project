@@ -49,6 +49,31 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 .btn-secondary{background:#1a3a6e;color:#64b5f6;border:1px solid #2a5a9e}
 .matched-count{color:#64b5f6;font-size:0.9em;margin:10px 0}
 .hidden{display:none}
+
+.results-table-section{margin-bottom:24px}
+.table-title{color:#64b5f6;font-size:1.1em;font-weight:600;margin:20px 0 10px;padding-left:12px;border-left:3px solid #64b5f6}
+.summary-title{color:#4caf50;border-left-color:#4caf50}
+.results-table{width:100%;border-collapse:collapse;background:#111d35;border-radius:10px;overflow:hidden;border:1px solid #1a3a6e}
+.results-table td{padding:12px 18px;border-bottom:1px solid #1a3a6e33;color:#c0c0c0;font-size:0.95em}
+.results-table td:first-child{color:#8899aa;width:55%}
+.results-table td:last-child{text-align:right;font-weight:500;color:#e0e0e0}
+.results-table .total-row td{border-top:2px solid #1a3a6e;font-weight:700;font-size:1.05em;color:#f44336}
+.results-table .total-row td:last-child{color:#f44336}
+.results-table .savings-row td{font-weight:700;color:#4caf50!important}
+.results-table .savings-row td:last-child{color:#4caf50!important;font-size:1.1em}
+.results-table .strategy-header td{background:#0a1628;color:#f0a500!important;font-weight:600;font-size:0.95em;border-bottom:1px solid #1a3a6e}
+.results-table .alt-row td{background:#0d1526;color:#f59e0b!important;font-style:italic}
+.results-table .spacer-row td{padding:4px;border:none}
+.summary-table .total-row td{color:#4caf50!important}
+.follow-up-container{width:100%;flex-basis:100%;padding:8px 0 8px 20px}
+.follow-up-question{background:#162240!important;border:1px solid #2a4a8e!important;border-left:3px solid #f59e0b!important;border-radius:8px;padding:14px 20px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.follow-up-question .question-text{color:#c8d6e5;font-size:0.92em}
+.follow-up-question .toggle-group{gap:6px}
+.follow-up-question .toggle-btn{padding:6px 16px;font-size:0.85em}
+.inline-input-container{width:100%;flex-basis:100%;margin-top:8px}
+.strategy-select{cursor:pointer}
+.strategy-select:hover{border-color:#4a7ac7}
+
 </style>
 </head>
 <body>
@@ -305,66 +330,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a1628;color:#e0e0e
 
 <!-- PAGE 3: STRATEGY SUMMARY -->
 <div id="page3" class="page">
-<h2 style="font-size:1.4em;margin-bottom:8px;font-weight:700">Strategy Summary & Optimization</h2>
-<p style="color:#8899aa;margin-bottom:15px">Optimized tax strategy allocation based on your inputs.</p>
-
-<div class="summary-grid">
-<div class="summary-card">
-<div class="label">Tax Year</div>
-<div class="value" id="tax-year-display">--</div>
-</div>
-<div class="summary-card">
-<div class="label">State</div>
-<div class="value" id="state-display">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Total Income</div>
-<div class="value" id="total-income">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Baseline Tax (Federal + State)</div>
-<div class="value red" id="baseline-tax">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Federal Tax</div>
-<div class="value" id="federal-tax-display">--</div>
-</div>
-<div class="summary-card">
-<div class="label">State Tax</div>
-<div class="value" id="state-tax-display">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Optimized Tax</div>
-<div class="value green" id="optimized-tax">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Tax Savings</div>
-<div class="value green" id="est-savings">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Effective Rate (Before)</div>
-<div class="value" id="effective-rate">--</div>
-</div>
-<div class="summary-card">
-<div class="label">New Effective Rate</div>
-<div class="value green" id="new-rate">--</div>
-</div>
-<div class="summary-card">
-<div class="label">ROI on Strategy Investment</div>
-<div class="value green" id="roi-display">--</div>
-</div>
-<div class="summary-card">
-<div class="label">Strategies Applied</div>
-<div class="value" id="total-strategies">--</div>
-</div>
-</div>
-
-<div id="results-container" style="margin-top:20px"></div>
-
-<div style="margin-top:30px;display:flex;gap:15px">
-<button class="btn btn-primary" onclick="calculateStrategies()">Recalculate</button>
-<button class="btn btn-secondary" onclick="exportResults()">Export Report</button>
-</div>
 </div>
 
 <script src="app.js"></script>
