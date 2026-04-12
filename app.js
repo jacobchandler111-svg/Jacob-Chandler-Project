@@ -738,46 +738,22 @@ const questions = {
 
   strategy: [
     {
-      id: 'custom_leverage', text: 'Are you interested in custom leverage?', trigger: 'custom_leverage',
-      followUp: [{
-        id: 'max_leverage_amt', text: 'What is your maximum leverage?', trigger: 'custom_leverage',
-        inputField: { type: 'number', placeholder: 'e.g. 1.5', label: 'Max Leverage (decimal)', mapTo: 'custom_leverage_value' }
-      }]
-    },
-    {
-      id: 'sector_investment', text: 'How much are you willing to invest in sector-specific instruments (e.g. Oil & Gas)?', trigger: 'interested_oil_gas',
-      inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Max Sector Investment (Oil & Gas)', mapTo: 'oil_gas_max' }
+      id: 'sector_allocation', text: 'What is your max allocation for a given sector?', trigger: 'sector_allocation', inputOnly: true,
+      inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Max Sector Allocation', mapTo: 'oil_gas_max' }
     }
   ],
 
-  realestate: [
-    { id: 'real_estate_sale', text: 'Are you planning to sell real estate this year?', trigger: 'real_estate_sale' },
-    { id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?', trigger: 'cost_segregation',
-      showWhen: function(a) { return a.rental_property === true; } },
-    { id: 'opportunity_zone', text: 'Are you interested in Opportunity Zone investments?', trigger: 'opportunity_zone' }
-  ],
-  retirement: [
-    { id: 'retirement_planning', text: 'Are you actively planning for retirement?', trigger: 'retirement_planning' },
-    { id: 'over_50', text: 'Are you over 50 years old?', trigger: 'over_50' },
-    { id: 'max_401k', text: 'Are you maximizing your 401(k) contributions?', trigger: 'max_401k' }
-  ],
   business: [
-    { id: 'business_owner', text: 'Do you own or operate a business?', trigger: 'has_business',
-      followUp: [
-        { id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp' },
-        { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership' }
-      ]
-    },
-    { id: 's_corp', text: 'Is your business an S Corporation?', trigger: 's_corp',
+    { id: 'is_s_corp', text: 'Is your business an S Corporation?', trigger: 's_corp',
       showWhen: function(a) { return a.has_business === true; } },
-    { id: 'partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership',
+    { id: 'is_partnership', text: 'Are you in a partnership or LLC?', trigger: 'partnership',
       showWhen: function(a) { return a.has_business === true; } }
   ]
 };
 
 const sectionMap = {
   income: 'q-income', assets: 'q-assets', strategy: 'q-strategy',
-  realestate: 'q-realestate', retirement: 'q-retirement', business: 'q-business'
+  business: 'q-business'
 };
 
 let userAnswers = {};
@@ -859,22 +835,27 @@ function renderQuestion(container, q, section) {
   textDiv.className = 'question-text';
   textDiv.textContent = q.text;
   card.appendChild(textDiv);
-  var toggleDiv = document.createElement('div');
-  toggleDiv.className = 'toggle-group';
-  var yesBtn = document.createElement('button');
-  yesBtn.className = 'toggle-btn yes' + (userAnswers[q.trigger] === true ? ' selected' : '');
-  yesBtn.textContent = 'Yes';
-  yesBtn.onclick = function() { setAnswer(q.id, q.trigger, true, this, q, section); };
-  var noBtn = document.createElement('button');
-  noBtn.className = 'toggle-btn no' + (userAnswers[q.trigger] === false ? ' selected' : '');
-  noBtn.textContent = 'No';
-  noBtn.onclick = function() { setAnswer(q.id, q.trigger, false, this, q, section); };
-  toggleDiv.appendChild(yesBtn);
-  toggleDiv.appendChild(noBtn);
-  card.appendChild(toggleDiv);
+  if (!q.inputOnly) {
+    var toggleDiv = document.createElement('div');
+    toggleDiv.className = 'toggle-group';
+    var yesBtn = document.createElement('button');
+    yesBtn.className = 'toggle-btn yes' + (userAnswers[q.trigger] === true ? ' selected' : '');
+    yesBtn.textContent = 'Yes';
+    yesBtn.onclick = function() { setAnswer(q.id, q.trigger, true, this, q, section); };
+    var noBtn = document.createElement('button');
+    noBtn.className = 'toggle-btn no' + (userAnswers[q.trigger] === false ? ' selected' : '');
+    noBtn.textContent = 'No';
+    noBtn.onclick = function() { setAnswer(q.id, q.trigger, false, this, q, section); };
+    toggleDiv.appendChild(yesBtn);
+    toggleDiv.appendChild(noBtn);
+    card.appendChild(toggleDiv);
+  }
   container.appendChild(card);
   // Render inline input if this question has one (for non-followUp questions like sector investment)
-  if (q.inputField) { renderInlineInput(card, q); }
+  if (q.inputField) {
+    if (q.inputOnly) { userAnswers[q.trigger] = true; }
+    renderInlineInput(card, q);
+  }
   // Render follow-up questions if answered yes
   if (q.followUp && userAnswers[q.trigger] === true) {
     var fc = document.createElement('div');
@@ -1067,7 +1048,7 @@ function setAnswer(questionId, trigger, value, btn, questionObj, section) {
     else if (!value && existingFollowUp) { existingFollowUp.remove(); }
   }
   rebuildConditionalSections();
-  if (section === 'strategy' || trigger === 'advisor_managed' || trigger === 'custom_leverage') {
+  if (section === 'strategy' || trigger === 'advisor_managed') {
     buildSectionQuestions('strategy');
   }
   syncPage2Visibility();
@@ -1077,7 +1058,10 @@ function setAnswer(questionId, trigger, value, btn, questionObj, section) {
 }
 
 function rebuildConditionalSections() {
-  ['business', 'realestate'].forEach(function(section) {
+  var bizContainer = document.getElementById('q-business');
+  if (bizContainer) { bizContainer.style.display = userAnswers.has_business === true ? 'block' : 'none'; }
+
+  ['business'].forEach(function(section) {
     var container = document.getElementById(sectionMap[section]);
     if (!container) return;
     container.innerHTML = '';
@@ -1110,7 +1094,7 @@ function syncPage2Visibility() {
   var ogField = document.getElementById('oil_gas_max');
   if (ogField) {
     var ogGroup = ogField.closest('.input-group');
-    if (ogGroup) { ogGroup.style.display = userAnswers.interested_oil_gas === true ? '' : 'none'; }
+    if (ogGroup) { ogGroup.style.display = userAnswers.sector_allocation === true ? '' : 'none'; }
   }
 }
 
@@ -1216,18 +1200,30 @@ function displayResults(result, baseline, inputs) {
   page3.appendChild(header);
 
   // TABLE 1: BASELINE
+  var grossSalesProceeds = parseCurrencyInput(inputs.portfolio_value) || 0;
+  var niit = 0;
+  var agi = result.totalIncome || 0;
+  var niitThreshold = (inputs.filing_status === 'married_joint') ? 250000 : 200000;
+  if (agi > niitThreshold) {
+    var investmentIncome = (parseCurrencyInput(inputs.lt_gains) || 0) + (parseCurrencyInput(inputs.st_gains) || 0) + (parseCurrencyInput(inputs.dividend_income) || 0);
+    niit = Math.round(Math.min(investmentIncome, agi - niitThreshold) * 0.038);
+  }
+  var totalTaxDue = result.baselineTax + niit;
+  var taxAsPctOfSale = grossSalesProceeds > 0 ? (totalTaxDue / grossSalesProceeds * 100).toFixed(1) : '0.0';
+  var afterTaxIncome = agi - totalTaxDue;
+  var effectiveTaxRate = agi > 0 ? (totalTaxDue / agi * 100).toFixed(1) : '0.0';
   var t1 = document.createElement('div');
   t1.className = 'results-table-section';
   t1.innerHTML = '<h3 class="table-title">Baseline \u2014 Without Tax Planning</h3>' +
     '<table class="results-table"><tbody>' +
-    '<tr><td>Tax Year</td><td>' + (result.year || getSelectedTaxYear()) + '</td></tr>' +
-    '<tr><td>Filing Status</td><td>' + (inputs.filing_status || 'Single') + '</td></tr>' +
-    '<tr><td>State</td><td>' + (result.state || getSelectedState() || 'N/A') + '</td></tr>' +
-    '<tr><td>Total Income</td><td>' + formatCurrency(result.totalIncome) + '</td></tr>' +
-    '<tr><td>Federal Tax</td><td>' + formatCurrency(result.baselineFederalTax) + '</td></tr>' +
-    '<tr><td>State Tax</td><td>' + formatCurrency(result.baselineStateTax) + '</td></tr>' +
-    '<tr class="total-row"><td>Total Tax Liability</td><td>' + formatCurrency(result.baselineTax) + '</td></tr>' +
-    '<tr><td>Effective Tax Rate</td><td>' + effRate + '%</td></tr>' +
+    '<tr><td>Gross Sales Proceeds</td><td>' + formatCurrency(grossSalesProceeds) + '</td></tr>' +
+    '<tr><td>Federal Tax Due</td><td>' + formatCurrency(result.baselineFederalTax) + '</td></tr>' +
+    '<tr><td>State Tax Due</td><td>' + formatCurrency(result.baselineStateTax) + '</td></tr>' +
+    '<tr><td>Net Investment Tax (NIIT)</td><td>' + formatCurrency(niit) + '</td></tr>' +
+    '<tr class="total-row"><td>Total Tax Due</td><td>' + formatCurrency(totalTaxDue) + '</td></tr>' +
+    '<tr><td>Tax as % of Sale</td><td>' + taxAsPctOfSale + '%</td></tr>' +
+    '<tr><td>After-Tax Income</td><td>' + formatCurrency(afterTaxIncome) + '</td></tr>' +
+    '<tr class="total-row"><td>Effective Tax Rate</td><td>' + effectiveTaxRate + '%</td></tr>' +
     '</tbody></table>';
   page3.appendChild(t1);
 
