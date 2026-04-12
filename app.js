@@ -880,12 +880,12 @@ function renderQuestion(container, q, section) {
     var fc = document.createElement('div');
     fc.className = 'follow-up-container';
     fc.id = 'followup-' + q.id;
-    q.followUp.forEach(function(fq) { renderFollowUpQuestion(fc, fq, section); });
+    q.followUp.forEach(function(fq) { renderFollowUpQuestion(fc, fq, section, q.trigger); });
     container.appendChild(fc);
   }
 }
 
-function renderFollowUpQuestion(container, fq, section) {
+function renderFollowUpQuestion(container, fq, section, parentTrigger) {
   var card = document.createElement('div');
   card.className = 'follow-up-question';
   card.setAttribute('data-question', fq.id);
@@ -893,7 +893,7 @@ function renderFollowUpQuestion(container, fq, section) {
   textDiv.className = 'question-text';
   textDiv.textContent = fq.text;
   card.appendChild(textDiv);
-  if (fq.followUp || !fq.inputField) {
+  if (fq.trigger !== parentTrigger) {
     var toggleDiv = document.createElement('div');
     toggleDiv.className = 'toggle-group';
     var yesBtn = document.createElement('button');
@@ -915,7 +915,7 @@ function renderFollowUpQuestion(container, fq, section) {
     var nestedFc = document.createElement('div');
     nestedFc.className = 'follow-up-container';
     nestedFc.id = 'followup-' + fq.id;
-    fq.followUp.forEach(function(nfq) { renderFollowUpQuestion(nestedFc, nfq, section); });
+    fq.followUp.forEach(function(nfq) { renderFollowUpQuestion(nestedFc, nfq, section, fq.trigger); });
     container.appendChild(nestedFc);
   }
 }
@@ -939,7 +939,7 @@ function renderInlineInput(card, q) {
   if (q.inputField.mapTo) { setupCurrencyInput(input, q.inputField.mapTo); }
   // Restore saved value
   var savedKey = '_input_' + q.id;
-  if (userAnswers[savedKey]) { input.value = userAnswers[savedKey]; }
+  if (userAnswers[savedKey]) { var restoredNum = parseFloat(String(userAnswers[savedKey]).replace(/[^0-9.]/g, '')); input.value = (!isNaN(restoredNum) && restoredNum > 0) ? formatCurrency(restoredNum) : userAnswers[savedKey]; }
   input.addEventListener('input', function() { userAnswers['_input_' + q.id] = this.value; });
   inputDiv.appendChild(label);
   inputDiv.appendChild(input);
