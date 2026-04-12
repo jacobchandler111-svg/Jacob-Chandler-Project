@@ -813,6 +813,7 @@ function buildQuestions() {
       else { renderQuestion(container, q, section); }
     });
   });
+  rebuildConditionalSections();
 }
 
 function buildSectionQuestions(section) {
@@ -1059,7 +1060,12 @@ function setAnswer(questionId, trigger, value, btn, questionObj, section) {
 
 function rebuildConditionalSections() {
   var bizContainer = document.getElementById('q-business');
-  if (bizContainer) { bizContainer.style.display = userAnswers.has_business === true ? 'block' : 'none'; }
+  if (bizContainer) {
+    var showBiz = userAnswers.has_business === true;
+    bizContainer.style.display = showBiz ? 'block' : 'none';
+    var bizH = bizContainer.previousElementSibling;
+    if (bizH && bizH.tagName === 'H3') { bizH.style.display = showBiz ? 'block' : 'none'; }
+  }
 
   ['business'].forEach(function(section) {
     var container = document.getElementById(sectionMap[section]);
