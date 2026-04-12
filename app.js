@@ -691,7 +691,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
 const questions = {
   income: [
     {
-      id: 'high_income', text: 'Are you a high-income earner?', trigger: 'high_income',
+      id: 'earned_income', text: 'Do you have earned income?', trigger: 'earned_income',
       followUp: [
         {
           id: 'w2_employee', text: 'Are you a W-2 employee?', trigger: 'w2_employee',
@@ -699,6 +699,16 @@ const questions = {
             id: 'w2_amount', text: 'How much did you earn from W-2 jobs?', trigger: 'w2_employee',
             inputField: { type: 'number', placeholder: 'e.g. 150,000', label: 'Annual W-2 Income', mapTo: 'w2_wages' }
           }]
+        },
+        {
+          id: 'not_w2_business', text: 'Do you own your own business?', trigger: 'has_business',
+          showWhen: function(a) { return a.w2_employee === false; },
+          inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Revenue', mapTo: 'biz_revenue' }
+        },
+        {
+          id: 'not_w2_retirement', text: 'Do you receive retirement benefits?', trigger: 'retirement_income',
+          showWhen: function(a) { return a.w2_employee === false; },
+          inputField: { type: 'number', placeholder: 'e.g. 40,000', label: 'Annual Retirement Distributions', mapTo: 'retirement_distributions' }
         },
         {
           id: 'multiple_income', text: 'Do you have multiple sources of income?', trigger: 'multiple_income',
@@ -739,7 +749,7 @@ const questions = {
   strategy: [
     {
       id: 'sector_allocation', text: 'What is your max allocation for a given sector?', trigger: 'sector_allocation', inputOnly: true,
-      inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Max Sector Allocation', mapTo: 'oil_gas_max' }
+      inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Max Allocation', mapTo: 'oil_gas_max' }
     }
   ],
 
@@ -854,7 +864,15 @@ function renderQuestion(container, q, section) {
   container.appendChild(card);
   // Render inline input if this question has one (for non-followUp questions like sector investment)
   if (q.inputField) {
-    if (q.inputOnly) { userAnswers[q.trigger] = true; }
+    if (q.inputOnly) {
+      userAnswers[q.trigger] = true;
+      card.style.display = 'flex';
+      card.style.alignItems = 'center';
+      card.style.justifyContent = 'space-between';
+      card.style.gap = '20px';
+      textDiv.style.flex = '1';
+      textDiv.style.minWidth = '0';
+    }
     renderInlineInput(card, q);
   }
   // Render follow-up questions if answered yes
@@ -868,6 +886,7 @@ function renderQuestion(container, q, section) {
 }
 
 function renderFollowUpQuestion(container, fq, section, parentTrigger) {
+  if (fq.showWhen && !fq.showWhen(userAnswers)) return;
   var card = document.createElement('div');
   card.className = 'follow-up-question';
   card.setAttribute('data-question', fq.id);
@@ -907,7 +926,13 @@ function renderInlineInput(card, q) {
   inputDiv.className = 'inline-input-container';
   inputDiv.id = 'input-wrap-' + q.id;
   inputDiv.style.display = userAnswers[q.trigger] === true ? 'block' : 'none';
-  inputDiv.style.marginTop = '10px';
+  if (q.inputOnly) {
+    inputDiv.style.marginTop = '0';
+    inputDiv.style.width = '300px';
+    inputDiv.style.flexShrink = '0';
+  } else {
+    inputDiv.style.marginTop = '10px';
+  }
   var label = document.createElement('label');
   label.textContent = q.inputField.label;
   label.style.color = '#b0bec5';
@@ -1049,6 +1074,9 @@ function setAnswer(questionId, trigger, value, btn, questionObj, section) {
     else if (!value && existingFollowUp) { existingFollowUp.remove(); }
   }
   rebuildConditionalSections();
+  if (trigger === 'w2_employee') {
+    buildSectionQuestions('income');
+  }
   if (section === 'strategy' || trigger === 'advisor_managed') {
     buildSectionQuestions('strategy');
   }
@@ -1082,7 +1110,8 @@ function syncPage2Visibility() {
   var fieldVisibility = {
     has_business: ['biz_revenue'],
     rental_property: ['rental_income'],
-    dividend_income: ['dividend_income']
+    dividend_income: ['dividend_income'],
+    self_employed: ['se_income']
   };
   Object.entries(fieldVisibility).forEach(function(entry) {
     var trigger = entry[0], fieldIds = entry[1];
