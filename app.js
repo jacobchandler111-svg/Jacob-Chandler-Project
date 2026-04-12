@@ -929,6 +929,8 @@ function renderInlineInput(card, q) {
   if (q.inputOnly) {
     inputDiv.style.marginTop = '0';
     inputDiv.style.width = '300px';
+    inputDiv.style.maxWidth = '300px';
+    inputDiv.style.flexBasis = '300px';
     inputDiv.style.flexShrink = '0';
   } else {
     inputDiv.style.marginTop = '10px';
