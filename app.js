@@ -686,60 +686,70 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
 
 // ================================================================
 // SECTION 4: CONDITIONAL QUESTIONNAIRE & UI
-// ================================================================
+// ==========================================================
 
 const questions = {
   income: [
     {
-      id: 'w2_employee', text: 'Are you a W-2 employee?', trigger: 'w2_employee',
+      id: 'high_income', text: 'Are you a high-income earner?', trigger: 'high_income',
+      followUp: [
+        {
+          id: 'w2_employee', text: 'Are you a W-2 employee?', trigger: 'w2_employee',
+          followUp: [{
+            id: 'w2_amount', text: 'How much did you earn from W-2 jobs?', trigger: 'w2_employee',
+            inputField: { type: 'number', placeholder: 'e.g. 150,000', label: 'Annual W-2 Income', mapTo: 'w2_wages' }
+          }]
+        },
+        {
+          id: 'multiple_income', text: 'Do you have multiple sources of income?', trigger: 'multiple_income',
+          followUp: [
+            { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property',
+              inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Annual Rental Income', mapTo: 'rental_income' } },
+            { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business',
+              inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Revenue', mapTo: 'biz_revenue' } },
+            { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed',
+              inputField: { type: 'number', placeholder: 'e.g. 75,000', label: 'Annual Self-Employment Income', mapTo: 'se_income' } },
+            { id: 'has_retirement_income', text: 'Are you receiving retirement benefits?', trigger: 'retirement_income',
+              inputField: { type: 'number', placeholder: 'e.g. 40,000', label: 'Annual Retirement Distributions', mapTo: 'retirement_distributions' } },
+            { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income',
+              inputField: { type: 'number', placeholder: 'e.g. 25,000', label: 'Annual Dividend Income', mapTo: 'dividend_income' } }
+          ]
+        }
+      ]
+    }
+  ],
+
+  assets: [
+    {
+      id: 'appreciated_asset', text: 'Do you have appreciated assets you are looking to sell?', trigger: 'appreciated_asset',
+      followUp: [
+        { id: 'asset_value', text: 'What is the total value of assets?', trigger: 'appreciated_asset',
+          inputField: { type: 'number', placeholder: 'e.g. 500,000', label: 'Portfolio Value of Sale', mapTo: 'portfolio_value' } },
+        { id: 'cost_basis_amt', text: 'What is your cost basis?', trigger: 'appreciated_asset',
+          inputField: { type: 'number', placeholder: 'e.g. 200,000', label: 'Cost Basis', mapTo: 'cost_basis' } },
+        { id: 'lt_gains_amt', text: 'Amount that is long-term capital gains?', trigger: 'appreciated_asset',
+          inputField: { type: 'number', placeholder: 'e.g. 200,000', label: 'Long-Term Capital Gains', mapTo: 'lt_gains' } },
+        { id: 'st_gains_amt', text: 'Amount that is short-term capital gains?', trigger: 'appreciated_asset',
+          inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Short-Term Capital Gains', mapTo: 'st_gains' } }
+      ]
+    },
+    { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' }
+  ],
+
+  strategy: [
+    {
+      id: 'custom_leverage', text: 'Are you interested in custom leverage?', trigger: 'custom_leverage',
       followUp: [{
-        id: 'w2_amount', text: 'How much do you earn from W-2 jobs?', trigger: 'w2_employee',
-        inputField: { type: 'number', placeholder: 'e.g. 150,000', label: 'Annual W-2 Income ($)', mapTo: 'w2_wages' }
+        id: 'max_leverage_amt', text: 'What is your maximum leverage?', trigger: 'custom_leverage',
+        inputField: { type: 'number', placeholder: 'e.g. 1.5', label: 'Max Leverage (decimal)', mapTo: 'custom_leverage_value' }
       }]
     },
     {
-      id: 'multiple_income', text: 'Do you have multiple sources of income?', trigger: 'multiple_income',
-      followUp: [
-        { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property',
-          inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Annual Rental Income ($)', mapTo: 'rental_income' } },
-        { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business',
-          inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Distributions ($)', mapTo: 'biz_revenue' } },
-        { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed',
-          inputField: { type: 'number', placeholder: 'e.g. 75,000', label: 'Annual Self-Employment Income ($)', mapTo: 'se_income' } },
-        { id: 'has_retirement_income', text: 'Are you receiving retirement benefits?', trigger: 'retirement_income',
-          inputField: { type: 'number', placeholder: 'e.g. 40,000', label: 'Annual Retirement Income ($)', mapTo: 'retirement_distributions' } },
-        { id: 'has_dividend_income', text: 'Do you receive significant dividend income?', trigger: 'dividend_income',
-          inputField: { type: 'number', placeholder: 'e.g. 25,000', label: 'Annual Dividend Income ($)', mapTo: 'dividend_income' } }
-      ]
-    },
-    { id: 'variable_income', text: 'Does your income vary significantly year to year?', trigger: 'variable_income' }
-  ],
-  investments: [
-    { id: 'appreciated_asset', text: 'Do you have appreciated assets (stocks, property, etc.)?', trigger: 'appreciated_asset' },
-    { id: 'stock_options', text: 'Do you have stock options (ISO or NSO)?', trigger: 'stock_options' }
-  ],
-  brooklyn: [
-    { id: 'advisor_managed', text: 'Will your account be advisor managed or Brooklyn managed? (suggested: Brooklyn managed)', trigger: 'advisor_managed' },
-    {
-      id: 'beta_selection_q', text: 'What beta selection would you like?', trigger: 'beta_chosen',
-      showWhen: function(a) { return a.advisor_managed === false; },
-      choiceType: 'select',
-      choices: [
-        { label: 'Beta 1 (S&P 500)', value: '1' },
-        { label: 'Beta 0.5 (CASH/S&P 500)', value: '0.5' },
-        { label: 'Beta 0 (Zero Beta)', value: '0' }
-      ]
-    },
-    { id: 'custom_leverage', text: 'Are you interested in a custom leverage structure?', trigger: 'custom_leverage' },
-    {
-      id: 'preset_leverage_q', text: 'Select a pre-set leverage strategy:', trigger: 'preset_chosen',
-      showWhen: function(a) { return a.custom_leverage === false; },
-      choiceType: 'leverage_preset'
+      id: 'sector_investment', text: 'How much are you willing to invest in sector-specific instruments (e.g. Oil & Gas)?', trigger: 'interested_oil_gas',
+      inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Max Sector Investment (Oil & Gas)', mapTo: 'oil_gas_max' }
     }
   ],
-  oilgas: [
-    { id: 'interested_oil_gas', text: 'Are you interested in oil & gas investments for income offset?', trigger: 'interested_oil_gas' }
-  ],
+
   realestate: [
     { id: 'real_estate_sale', text: 'Are you planning to sell real estate this year?', trigger: 'real_estate_sale' },
     { id: 'cost_segregation', text: 'Have you considered cost segregation for rental properties?', trigger: 'cost_segregation',
@@ -766,8 +776,8 @@ const questions = {
 };
 
 const sectionMap = {
-  income: 'q-income', investments: 'q-investments', brooklyn: 'q-brooklyn',
-  oilgas: 'q-oilgas', realestate: 'q-realestate', retirement: 'q-retirement', business: 'q-business'
+  income: 'q-income', assets: 'q-assets', strategy: 'q-strategy',
+  realestate: 'q-realestate', retirement: 'q-retirement', business: 'q-business'
 };
 
 let userAnswers = {};
@@ -792,39 +802,25 @@ function setupCurrencyInput(input, mapTo) {
     if (!isNaN(num) && num > 0) {
       this.value = formatCurrency(num);
     }
-    if (mapTo) syncToPage2(mapTo, raw);
-  });
-  input.addEventListener('focus', function() {
-    var raw = parseCurrencyInput(this.value);
-    if (raw && raw !== '0') this.value = raw;
-  });
-  input.addEventListener('input', function() {
-    if (mapTo) syncToPage2(mapTo, parseCurrencyInput(this.value));
+    // Auto-fill to Page 2
+    if (mapTo) {
+      var target = document.getElementById(mapTo);
+      if (target) {
+        target.value = this.value;
+        target.dispatchEvent(new Event('blur'));
+      }
+    }
   });
 }
 
-// Setup currency formatting on Page 2 number inputs
 function setupPage2CurrencyInputs() {
-  var currencyFields = ['w2_wages','se_income','biz_revenue','rental_income','dividend_income',
-    'retirement_distributions','st_gains','lt_gains','portfolio_value',
-    'property_values','charitable','salt','retirement_contrib','available_capital','oil_gas_max'];
-  currencyFields.forEach(function(fieldId) {
-    var el = document.getElementById(fieldId);
-    if (!el || el.dataset.currencySetup) return;
-    el.dataset.currencySetup = 'true';
-    el.type = 'text';
-    el.addEventListener('blur', function() {
-      var raw = parseCurrencyInput(this.value);
-      var num = parseFloat(raw);
-      if (!isNaN(num) && num > 0) {
-        this.value = formatCurrency(num);
-      }
-    });
-    el.addEventListener('focus', function() {
-      var raw = parseCurrencyInput(this.value);
-      if (raw && raw !== '0') this.value = raw;
-      else this.value = '';
-    });
+  var currencyFields = ['w2_wages','se_income','biz_revenue','rental_income',
+    'dividend_income','retirement_distributions','st_gains','lt_gains','portfolio_value',
+    'cost_basis','charitable','salt','retirement_contrib','property_values',
+    'available_capital','oil_gas_max'];
+  currencyFields.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { setupCurrencyInput(el, null); }
   });
 }
 
@@ -840,6 +836,18 @@ function buildQuestions() {
       else if (q.choiceType === 'leverage_preset') { renderPresetQuestion(container, q, section); }
       else { renderQuestion(container, q, section); }
     });
+  });
+}
+
+function buildSectionQuestions(section) {
+  var container = document.getElementById(sectionMap[section]);
+  if (!container) return;
+  container.innerHTML = '';
+  questions[section].forEach(function(q) {
+    if (q.showWhen && !q.showWhen(userAnswers)) return;
+    if (q.choiceType === 'select') { renderSelectQuestion(container, q, section); }
+    else if (q.choiceType === 'leverage_preset') { renderPresetQuestion(container, q, section); }
+    else { renderQuestion(container, q, section); }
   });
 }
 
@@ -865,6 +873,9 @@ function renderQuestion(container, q, section) {
   toggleDiv.appendChild(noBtn);
   card.appendChild(toggleDiv);
   container.appendChild(card);
+  // Render inline input if this question has one (for non-followUp questions like sector investment)
+  if (q.inputField) { renderInlineInput(card, q); }
+  // Render follow-up questions if answered yes
   if (q.followUp && userAnswers[q.trigger] === true) {
     var fc = document.createElement('div');
     fc.className = 'follow-up-container';
@@ -882,19 +893,22 @@ function renderFollowUpQuestion(container, fq, section) {
   textDiv.className = 'question-text';
   textDiv.textContent = fq.text;
   card.appendChild(textDiv);
-  var toggleDiv = document.createElement('div');
-  toggleDiv.className = 'toggle-group';
-  var yesBtn = document.createElement('button');
-  yesBtn.className = 'toggle-btn yes' + (userAnswers[fq.trigger] === true ? ' selected' : '');
-  yesBtn.textContent = 'Yes';
-  yesBtn.onclick = function() { setAnswer(fq.id, fq.trigger, true, this, fq, section); };
-  var noBtn = document.createElement('button');
-  noBtn.className = 'toggle-btn no' + (userAnswers[fq.trigger] === false ? ' selected' : '');
-  noBtn.textContent = 'No';
-  noBtn.onclick = function() { setAnswer(fq.id, fq.trigger, false, this, fq, section); };
-  toggleDiv.appendChild(yesBtn);
-  toggleDiv.appendChild(noBtn);
-  card.appendChild(toggleDiv);
+  // Only show Yes/No buttons if the follow-up is a toggleable question (has its own trigger different from parent)
+  if (fq.followUp || !fq.inputField) {
+    var toggleDiv = document.createElement('div');
+    toggleDiv.className = 'toggle-group';
+    var yesBtn = document.createElement('button');
+    yesBtn.className = 'toggle-btn yes' + (userAnswers[fq.trigger] === true ? ' selected' : '');
+    yesBtn.textContent = 'Yes';
+    yesBtn.onclick = function() { setAnswer(fq.id, fq.trigger, true, this, fq, section); };
+    var noBtn = document.createElement('button');
+    noBtn.className = 'toggle-btn no' + (userAnswers[fq.trigger] === false ? ' selected' : '');
+    noBtn.textContent = 'No';
+    noBtn.onclick = function() { setAnswer(fq.id, fq.trigger, false, this, fq, section); };
+    toggleDiv.appendChild(yesBtn);
+    toggleDiv.appendChild(noBtn);
+    card.appendChild(toggleDiv);
+  }
   if (fq.inputField) { renderInlineInput(card, fq); }
   container.appendChild(card);
 }
@@ -914,12 +928,16 @@ function renderInlineInput(card, q) {
   input.placeholder = q.inputField.placeholder || '';
   input.id = 'inline-' + q.id;
   input.className = 'currency-input';
-  input.style.cssText = 'width:100%;padding:10px 12px;margin-top:4px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;font-size:1em;';
+  input.style.cssText = 'width:100%;padding:10px 12px;margin-top:4px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1626;color:#e0e6ed;font-size:1em;';
   if (q.inputField.mapTo) { setupCurrencyInput(input, q.inputField.mapTo); }
+  // Restore saved value
+  var savedKey = '_input_' + q.id;
+  if (userAnswers[savedKey]) { input.value = userAnswers[savedKey]; }
+  input.addEventListener('input', function() { userAnswers['_input_' + q.id] = this.value; });
   inputDiv.appendChild(label);
   inputDiv.appendChild(input);
   card.appendChild(inputDiv);
-      }
+}
 
 function renderSelectQuestion(container, q, section) {
   var card = document.createElement('div');
@@ -931,7 +949,7 @@ function renderSelectQuestion(container, q, section) {
   card.appendChild(textDiv);
   var sel = document.createElement('select');
   sel.className = 'strategy-select';
-  sel.style.cssText = 'padding:10px 14px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;font-size:0.95em;min-width:200px;';
+  sel.style.cssText = 'padding:10px 14px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1626;color:#e0e6ed;font-size:1em;width:100%;margin-top:8px;';
   var defaultOpt = document.createElement('option');
   defaultOpt.value = '';
   defaultOpt.textContent = '-- Select --';
@@ -949,10 +967,9 @@ function renderSelectQuestion(container, q, section) {
     userAnswers[q.trigger] = !!this.value;
     var betaEl = document.getElementById('beta_selection');
     if (betaEl && this.value) betaEl.value = this.value;
-    // Auto-fill max leverage from strategy data
     autoFillLeverage();
     rebuildConditionalSections();
-    buildSectionQuestions('brooklyn');
+    buildSectionQuestions('strategy');
     updateProgress();
   };
   card.appendChild(sel);
@@ -969,7 +986,7 @@ function renderPresetQuestion(container, q, section) {
   card.appendChild(textDiv);
   var sel = document.createElement('select');
   sel.className = 'strategy-select';
-  sel.style.cssText = 'padding:10px 14px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1628;color:#e0e0e0;font-size:0.95em;min-width:200px;';
+  sel.style.cssText = 'padding:10px 14px;border-radius:6px;border:1px solid #2a4a8e;background:#0a1626;color:#e0e6ed;font-size:1em;width:100%;margin-top:8px;';
   var defaultOpt = document.createElement('option');
   defaultOpt.value = '';
   defaultOpt.textContent = '-- Select Leverage --';
@@ -993,7 +1010,6 @@ function renderPresetQuestion(container, q, section) {
     userAnswers[q.trigger] = !!this.value;
     var presetEl = document.getElementById('brooklyn_preset');
     if (presetEl && this.value) presetEl.value = this.value;
-    // Auto-fill leverage on Page 2
     autoFillLeverage();
     updateProgress();
   };
@@ -1021,21 +1037,12 @@ function autoFillLeverage() {
     }
   } else if (strat && strat.dataPoints.length > 0) {
     // Default to first preset
-    var levEl2 = document.getElementById('max_leverage');
-    if (levEl2 && !levEl2.value) levEl2.value = strat.dataPoints[0].leverage;
+    var dp = strat.dataPoints[0];
+    var levEl = document.getElementById('max_leverage');
+    if (levEl) levEl.value = dp.leverage;
+    var customEl = document.getElementById('custom_leverage_value');
+    if (customEl) customEl.value = dp.leverage;
   }
-}
-
-function buildSectionQuestions(section) {
-  var container = document.getElementById(sectionMap[section]);
-  if (!container) return;
-  container.innerHTML = '';
-  questions[section].forEach(function(q) {
-    if (q.showWhen && !q.showWhen(userAnswers)) return;
-    if (q.choiceType === 'select') { renderSelectQuestion(container, q, section); }
-    else if (q.choiceType === 'leverage_preset') { renderPresetQuestion(container, q, section); }
-    else { renderQuestion(container, q, section); }
-  });
 }
 
 function setAnswer(questionId, trigger, value, btn, questionObj, section) {
@@ -1053,8 +1060,8 @@ function setAnswer(questionId, trigger, value, btn, questionObj, section) {
     else if (!value && existingFollowUp) { existingFollowUp.remove(); }
   }
   rebuildConditionalSections();
-  if (section === 'brooklyn' || trigger === 'advisor_managed' || trigger === 'custom_leverage') {
-    buildSectionQuestions('brooklyn');
+  if (section === 'strategy' || trigger === 'advisor_managed' || trigger === 'custom_leverage') {
+    buildSectionQuestions('strategy');
   }
   syncPage2Visibility();
   updateProgress();
@@ -1074,18 +1081,8 @@ function rebuildConditionalSections() {
   });
 }
 
-function syncToPage2(fieldId, value) {
-  var el = document.getElementById(fieldId);
-  if (el) {
-    el.value = value;
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-}
-
 function syncPage2Visibility() {
   var fieldVisibility = {
-    w2_employee: ['w2_wages'],
-    self_employed: ['se_income'],
     has_business: ['biz_revenue'],
     rental_property: ['rental_income'],
     dividend_income: ['dividend_income']
@@ -1147,7 +1144,7 @@ function updateBrooklynUI() {
 function getFormInputs() {
   var fields = ['w2_wages','se_income','biz_revenue','rental_income',
     'dividend_income','retirement_distributions','st_gains','lt_gains','portfolio_value',
-    'property_values','charitable','salt','retirement_contrib','taxpayer_age','state',
+    'cost_basis','charitable','salt','retirement_contrib','property_values','taxpayer_age','state',
     'implementation_date','available_capital','max_leverage','beta_selection',
     'brooklyn_preset','custom_leverage_value','filing_status','tax_year',
     'oil_gas_max','oil_gas_rate','months_remaining'];
@@ -1405,12 +1402,6 @@ async function loadStrategies() {
   console.warn('Failed to load strategies.json');
 }
 
-
-// ================================================================
-// SECTION 5: STRATEGY IMPLEMENTATION ENGINE
-// All 48 additional strategies with year-dependent limits
-// ================================================================
-
 const STRATEGY_LIMITS = {
   '2025': {
     retirement401k_employeeDeferral: 23500, retirement401k_catchUp50: 7500, retirement401k_catchUp60to63: 11250,
@@ -1598,9 +1589,11 @@ function evaluateAllStrategies(inputs) {
 }
 
 
+
 // --- Initialization ---
 buildQuestions();
 loadStrategies();
 loadTaxBrackets();
+
 
 
