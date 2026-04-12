@@ -893,7 +893,6 @@ function renderFollowUpQuestion(container, fq, section) {
   textDiv.className = 'question-text';
   textDiv.textContent = fq.text;
   card.appendChild(textDiv);
-  // Only show Yes/No buttons if the follow-up is a toggleable question (has its own trigger different from parent)
   if (fq.followUp || !fq.inputField) {
     var toggleDiv = document.createElement('div');
     toggleDiv.className = 'toggle-group';
@@ -911,6 +910,14 @@ function renderFollowUpQuestion(container, fq, section) {
   }
   if (fq.inputField) { renderInlineInput(card, fq); }
   container.appendChild(card);
+  // Handle nested follow-ups (e.g., W-2 amount after W-2 employee Yes)
+  if (fq.followUp && userAnswers[fq.trigger] === true) {
+    var nestedFc = document.createElement('div');
+    nestedFc.className = 'follow-up-container';
+    nestedFc.id = 'followup-' + fq.id;
+    fq.followUp.forEach(function(nfq) { renderFollowUpQuestion(nestedFc, nfq, section); });
+    container.appendChild(nestedFc);
+  }
 }
 
 function renderInlineInput(card, q) {
@@ -1594,6 +1601,7 @@ function evaluateAllStrategies(inputs) {
 buildQuestions();
 loadStrategies();
 loadTaxBrackets();
+
 
 
 
