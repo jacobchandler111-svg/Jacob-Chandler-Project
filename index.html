@@ -80,31 +80,33 @@ h2[style]{color:#e3f2fd!important}
 
 <!-- PAGE 1: STRATEGY SELECTOR -->
 <div id="page1" class="page active">
-<h2 style="font-size:1.4em;margin-bottom:8px;font-weight:700">Strategy Selector</h2>
-<p style="color:#8899aa;margin-bottom:15px">Answer the following questions to identify which strategies apply to your situation.</p>
-<div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-<div class="match-badge"><span id="match-count">0</span> strategies matched</div>
-<div class="section-title">Income &amp; Filing</div>
-<div id="q-income"></div>
-<div class="section-title">Investments</div>
-<div id="q-investments"></div>
-<div class="section-title">Brooklyn Strategy Options</div>
-<div id="q-brooklyn"></div>
-<div class="section-title">Oil &amp; Gas Strategy</div>
-<div id="q-oilgas"></div>
-<div class="section-title">Real Estate</div>
-<div id="q-realestate"></div>
-<div class="section-title">Retirement</div>
-<div id="q-retirement"></div>
-<div class="section-title">Business</div>
-<div id="q-business"></div>
-<div style="margin-top:30px">
-<button class="btn btn-primary" onclick="showPage('page2')">Continue to Client Inputs &rarr;</button>
-</div>
-</div>
+      <h2>Strategy Selector</h2>
+      <p class="subtitle">Answer the following questions to identify which strategies apply to your situation.</p>
+      <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+      <p class="match-badge"><span id="match-count">0</span> strategies matched</p>
 
-<!-- PAGE 2: CLIENT INPUTS -->
-<div id="page2" class="page">
+      <h3 class="section-title">Income & Filing</h3>
+      <div id="q-income"></div>
+
+      <h3 class="section-title">Assets & Capital Gains</h3>
+      <div id="q-assets"></div>
+
+      <h3 class="section-title">Strategy Preferences</h3>
+      <div id="q-strategy"></div>
+
+      <h3 class="section-title">Real Estate</h3>
+      <div id="q-realestate"></div>
+
+      <h3 class="section-title">Retirement</h3>
+      <div id="q-retirement"></div>
+
+      <h3 class="section-title">Business</h3>
+      <div id="q-business"></div>
+
+      <button class="btn btn-primary" onclick="showPage(2)">Continue to Client Inputs &rarr;</button>
+    </div>
+
+    <div id="page2" class="page">
 <h2 style="font-size:1.4em;margin-bottom:8px;font-weight:700">Client Financial Inputs</h2>
 <p style="color:#8899aa;margin-bottom:15px">Enter financial details for accurate strategy calculations.</p>
 
@@ -141,6 +143,11 @@ h2[style]{color:#e3f2fd!important}
 <div class="section-title">Capital Gains</div>
 <div class="input-grid">
 <div class="input-group"><label>Portfolio Value of Sale ($)</label><input type="text" id="portfolio_value" placeholder="0"></div>
+
+          <div class="input-group">
+            <label for="cost_basis">Cost Basis ($)</label>
+            <input type="text" id="cost_basis" value="0" class="currency-input">
+          </div>
 <div class="input-group"><label>Short-Term Capital Gains ($)</label><input type="text" id="st_gains" placeholder="0"></div>
 <div class="input-group"><label>Long-Term Capital Gains ($)</label><input type="text" id="lt_gains" placeholder="0"></div>
 </div>
@@ -182,5 +189,6 @@ h2[style]{color:#e3f2fd!important}
 <script src="app.js"></script>
 </body>
 </html>
+
 
 
