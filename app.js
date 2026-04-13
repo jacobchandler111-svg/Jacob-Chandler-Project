@@ -162,9 +162,8 @@ function interpolateLossRate(strategyKey, leverage) {
 }
 
 function timeWeightedLoss(annualLossRate, implementationDate) {
-  const now = new Date();
-  const yearEnd = new Date(now.getFullYear(), 11, 31);
   const implDate = new Date(implementationDate);
+  const yearEnd = new Date(implDate.getFullYear(), 11, 31);
   if (implDate > yearEnd) return 0;
   const msInYear = 365.25 * 24 * 60 * 60 * 1000;
   const remaining = Math.max(0, yearEnd - implDate);
@@ -400,7 +399,8 @@ function computeBaselineTax(inputs) {
   const div = parseFloat(inputs.dividend_income || 0);
   const stg = parseFloat(inputs.st_gains || 0);
   const ltg = parseFloat(inputs.lt_gains || 0);
-  const ordinaryIncome = w2 + se + biz + rent + div + stg;
+  const seDeduction = se > 0 ? se * getSeTaxMultiplier(year) * getSeTaxRate(year) * 0.5 : 0;
+  const ordinaryIncome = w2 + se + biz + rent + div + stg - seDeduction;
   const totalIncome = ordinaryIncome + ltg;
   const sd = getStandardDeduction(year, f);
   const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
@@ -411,7 +411,7 @@ function computeBaselineTax(inputs) {
   if (totalIncome > niitThreshold) {
     federalTax += Math.min(div + ltg + stg + rent, totalIncome - niitThreshold) * 0.038;
   }
-  let stateTax = calculateStateTax(ordinaryIncome, stateCode, year, f);
+  let stateTax = calculateStateTax(ordinaryIncome + ltg, stateCode, year, f);
   stateTax += calculateWaCapGainsTax(ltg, stateCode, year);
   const totalTax = federalTax + stateTax;
   return { tax: Math.round(totalTax), federalTax: Math.round(federalTax), stateTax: Math.round(stateTax), totalIncome: Math.round(totalIncome), ordinaryIncome: Math.round(ordinaryIncome), taxableOrdinary: Math.round(taxableOrdinary), filing: f, year: year, state: stateCode };
@@ -449,10 +449,12 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
   const ltOffset = Math.min(remainingLoss, Math.max(0, adjLtg));
   adjLtg -= ltOffset;
   remainingLoss -= ltOffset;
-  const ordinaryOffset = Math.min(remainingLoss, 3000);
+  const capLossLimit = (f === 'married_separate') ? 1500 : 3000;
+  const ordinaryOffset = Math.min(remainingLoss, capLossLimit);
   remainingLoss -= ordinaryOffset;
   const ogOffset = oilGasOffset || 0;
-  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset - delphiOrdinaryOffset;
+  const seDeduction = se > 0 ? se * getSeTaxMultiplier(year) * getSeTaxRate(year) * 0.5 : 0;
+  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset - delphiOrdinaryOffset - seDeduction;
   const totalIncome = ordinaryIncome + Math.max(0, adjLtg);
   const sd = getStandardDeduction(year, f);
   const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
@@ -464,7 +466,7 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
   if (niitIncome > niitThreshold) {
     federalTax += Math.min(div + Math.max(0, adjLtg) + adjStg + rent, niitIncome - niitThreshold) * 0.038;
   }
-  let stateTax = calculateStateTax(ordinaryIncome, stateCode, year, f);
+  let stateTax = calculateStateTax(ordinaryIncome + Math.max(0, adjLtg), stateCode, year, f);
   stateTax += calculateWaCapGainsTax(Math.max(0, adjLtg), stateCode, year);
   const totalTax = federalTax + stateTax;
   return { tax: Math.round(totalTax), federalTax: Math.round(federalTax), stateTax: Math.round(stateTax), totalIncome: Math.round(totalIncome), carryForwardLoss: Math.round(remainingLoss) };
@@ -1245,12 +1247,12 @@ function displayResults(result, baseline, inputs) {
   var grossSalesProceeds = parseCurrencyInput(inputs.portfolio_value) || 0;
   var niit = 0;
   var agi = result.totalIncome || 0;
-  var niitThreshold = (inputs.filing_status === 'married_joint') ? 250000 : 200000;
+  var niitThreshold = getNiitThreshold(baseline.year || '2025', baseline.filing || 'single');
   if (agi > niitThreshold) {
-    var investmentIncome = (parseCurrencyInput(inputs.lt_gains) || 0) + (parseCurrencyInput(inputs.st_gains) || 0) + (parseCurrencyInput(inputs.dividend_income) || 0);
+    var investmentIncome = (parseCurrencyInput(inputs.lt_gains) || 0) + (parseCurrencyInput(inputs.st_gains) || 0) + (parseCurrencyInput(inputs.dividend_income) || 0) + (parseCurrencyInput(inputs.rental_income) || 0);
     niit = Math.round(Math.min(investmentIncome, agi - niitThreshold) * 0.038);
   }
-  var totalTaxDue = result.baselineTax + niit;
+  var totalTaxDue = result.baselineTax;
   var taxAsPctOfSale = grossSalesProceeds > 0 ? (totalTaxDue / grossSalesProceeds * 100).toFixed(1) : '0.0';
   var afterTaxIncome = agi - totalTaxDue;
   var effectiveTaxRate = agi > 0 ? (totalTaxDue / agi * 100).toFixed(1) : '0.0';
