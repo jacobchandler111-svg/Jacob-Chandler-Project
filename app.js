@@ -1857,4 +1857,3 @@ setupLeverageSlider();
 
 
 
-h
