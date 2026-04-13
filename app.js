@@ -1332,6 +1332,17 @@ function displayResults(result, baseline, inputs) {
   var t3 = document.createElement('div');
   t3.className = 'results-table-section summary-section';
   var totalFees = fees.totalFee;
+  // Compute Delphi strategy fee
+  var stratAlloc = result.allocation && result.allocation.length > 0 ? result.allocation[0] : null;
+  var delphiFeeRate = 0;
+  var delphiFeeAmount = 0;
+  if (stratAlloc && stratAlloc.delphiInvestment > 0) {
+    delphiFeeRate = (stratAlloc.delphiClass === 'A') ? 0.0175 : 0.02;
+    delphiFeeAmount = stratAlloc.delphiInvestment * delphiFeeRate;
+  }
+  var brooklynFeeAmount = 0;
+  var strategyFeesTotal = delphiFeeAmount + brooklynFeeAmount;
+  totalFees = totalFees + strategyFeesTotal;
   var netSavings = result.savings - totalFees;
   var roiPct = totalFees > 0 ? (netSavings / totalFees * 100).toFixed(1) : (result.savings > 0 ? '\u221e' : '0');
 
@@ -1347,9 +1358,8 @@ function displayResults(result, baseline, inputs) {
     '<tr class="total-row"><td>Total Fees</td><td>' + formatCurrency(totalFees) + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="strategy-header"><td colspan="2">Strategy Fees</td></tr>' +
-    '<tr><td>Brooklyn Strategy Fee</td><td>$0</td></tr>' +
-    '<tr><td>Delphi Strategy Fee</td><td>$0</td></tr>' +
-    '<tr><td>Oil & Gas Strategy Fee</td><td>$0</td></tr>' +
+    '<tr><td>Brooklyn Strategy Fee</td><td>' + formatCurrency(brooklynFeeAmount) + '</td></tr>' +
+    '<tr><td>Delphi Management Fee</td><td>' + formatCurrency(delphiFeeAmount) + (delphiFeeRate > 0 ? ' (' + (delphiFeeRate * 100) + '%)' : '') + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="savings-row"><td>Net Savings After Fees</td><td>' + formatCurrency(netSavings) + '</td></tr>' +
@@ -1493,7 +1503,23 @@ function recalculateWithToggles() {
   for (var k in _lastResult) {
     modResult[k] = _lastResult[k];
   }
-  modResult.optimizedTax = newAfter.tax;
+  
+  // Deep copy allocation and zero out disabled strategy data for fee calculation
+  if (modResult.allocation && modResult.allocation.length > 0) {
+    var origAlloc = modResult.allocation[0];
+    var modAlloc = {};
+    for (var ak in origAlloc) { modAlloc[ak] = origAlloc[ak]; }
+    if (!_strategyToggles.delphi) {
+      modAlloc.delphiInvestment = 0;
+      modAlloc.delphiAllocation = 0;
+    }
+    if (!_strategyToggles.brooklyn) {
+      modAlloc.investment = 0;
+      modAlloc.losses = 0;
+    }
+    modResult.allocation = [modAlloc];
+  }
+modResult.optimizedTax = newAfter.tax;
   modResult.savings = _lastResult.baselineTax - newAfter.tax;
   
   var totalFees = computeBrookhavenFees(_lastInputs.implementation_date) || 0;
@@ -1831,3 +1857,4 @@ setupLeverageSlider();
 
 
 
+h
