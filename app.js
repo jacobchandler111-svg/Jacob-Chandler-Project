@@ -1202,6 +1202,13 @@ function getFormInputs() {
   return inp;
 }
 
+// Global state for strategy toggle feature
+var _lastResult = null;
+var _lastBaseline = null;
+var _lastInputs = null;
+var _lastAllocation = null;
+var _strategyToggles = { brooklyn: true, oilgas: true, delphi: true };
+
 function calculateStrategies() {
   var inp = getFormInputs();
   var baseline = computeBaselineTax(inp);
@@ -1220,6 +1227,11 @@ function calculateStrategies() {
   }
   var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
   var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
+  _lastResult = result;
+  _lastBaseline = baseline;
+  _lastInputs = inp;
+  _lastAllocation = result.allocation && result.allocation.length > 0 ? result.allocation[0] : null;
+  _strategyToggles = { brooklyn: true, oilgas: true, delphi: true };
   displayResults(result, baseline, inp);
 }
 
@@ -1347,8 +1359,148 @@ function displayResults(result, baseline, inputs) {
   var btnDiv = document.createElement('div');
   btnDiv.style.cssText = 'margin-top:30px;display:flex;gap:15px;';
   btnDiv.innerHTML = '<button class="btn btn-primary" onclick="calculateStrategies()">Recalculate</button><button class="btn btn-secondary" onclick="exportResults()">Export Report</button>';
+
+  // STRATEGY BREAKDOWN WITH TOGGLES
+  var t4 = document.createElement('div');
+  t4.className = 'results-table-section summary-section';
+  t4.id = 'strategy-breakdown';
+  
+  var alloc = result.allocation && result.allocation.length > 0 ? result.allocation[0] : null;
+  var strategies = [];
+  
+  if (alloc && alloc.key && alloc.investment > 0) {
+    var bStrat = BROOKLYN_STRATEGIES[alloc.key] || {};
+    strategies.push({
+      id: 'brooklyn',
+      name: 'Brooklyn Tax Loss Harvesting',
+      detail: (bStrat.name || alloc.key) + ' | Leverage: ' + getLeverageLabel(alloc.key, alloc.leverage),
+      investment: alloc.investment,
+      losses: alloc.losses || 0,
+      active: _strategyToggles.brooklyn
+    });
+  }
+  
+  if (alloc && alloc.oilGasInvestment > 0) {
+    strategies.push({
+      id: 'oilgas',
+      name: 'Oil & Gas',
+      detail: 'Investment: ' + formatCurrency(alloc.oilGasInvestment) + ' | Offset: ' + formatCurrency(alloc.oilGasOffset || 0),
+      investment: alloc.oilGasInvestment,
+      losses: alloc.oilGasOffset || 0,
+      active: _strategyToggles.oilgas
+    });
+  }
+  
+  if (alloc && alloc.delphiInvestment > 0) {
+    var dFund = typeof DELPHI_STRATEGIES !== 'undefined' && alloc.delphiClass ? DELPHI_STRATEGIES[alloc.delphiClass] : null;
+    strategies.push({
+      id: 'delphi',
+      name: 'Delphi Strategy',
+      detail: (dFund ? dFund.name : alloc.delphiClass) + ' | Investment: ' + formatCurrency(alloc.delphiInvestment),
+      investment: alloc.delphiInvestment,
+      losses: 0,
+      active: _strategyToggles.delphi
+    });
+  }
+  
+  if (strategies.length > 0) {
+    var fullOptTax = result.optimizedTax;
+    var activeLosses = _strategyToggles.brooklyn ? (result.totalLosses || 0) : 0;
+    var activeOG = _strategyToggles.oilgas ? (result.totalOilGasOffset || 0) : 0;
+    var activeDelphi = _strategyToggles.delphi ? (result.totalDelphiAlloc || null) : null;
+    strategies.forEach(function(s) {
+      if (!s.active) {
+        var testLosses = activeLosses;
+        var testOG = activeOG;
+        var testDelphi = activeDelphi;
+        if (s.id === 'brooklyn') testLosses = (_lastAllocation && _lastAllocation.losses) ? _lastAllocation.losses : 0;
+        if (s.id === 'oilgas') testOG = (_lastAllocation && _lastAllocation.oilGasOffset) ? _lastAllocation.oilGasOffset : 0;
+        if (s.id === 'delphi') testDelphi = (_lastAllocation && _lastAllocation.delphiAllocation) ? _lastAllocation.delphiAllocation : null;
+        var taxWith = computeTaxAfterStrategies(inputs, testLosses, testOG, testDelphi);
+        s.savings = fullOptTax - taxWith.tax;
+      } else {
+        var testLosses = activeLosses;
+        var testOG = activeOG;
+        var testDelphi = activeDelphi;
+        if (s.id === 'brooklyn') testLosses = 0;
+        if (s.id === 'oilgas') testOG = 0;
+        if (s.id === 'delphi') testDelphi = null;
+        var taxWithout = computeTaxAfterStrategies(inputs, testLosses, testOG, testDelphi);
+        s.savings = taxWithout.tax - fullOptTax;
+      }
+    });
+    
+    var cardsHtml = '<h3 class="table-title" style="margin-bottom:12px;">Strategy Breakdown</h3>';
+    cardsHtml += '<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;">';
+    
+    strategies.forEach(function(s) {
+      var opacity = s.active ? '1' : '0.5';
+      var toggleChecked = s.active ? 'checked' : '';
+      cardsHtml += '<div class="strategy-toggle-card" data-strategy-id="' + s.id + '" style="' +
+        'flex:1;min-width:220px;max-width:340px;background:rgba(21,101,192,0.15);border:1px solid rgba(66,165,245,0.3);' +
+        'border-radius:10px;padding:16px;text-align:center;opacity:' + opacity + ';transition:opacity 0.3s;">' +
+        '<div style="font-weight:700;font-size:1.05em;color:#90caf9;margin-bottom:6px;">' + s.name + '</div>' +
+        '<div style="font-size:0.85em;color:#b0bec5;margin-bottom:10px;">' + s.detail + '</div>' +
+        '<div style="font-size:1.3em;font-weight:700;color:#4fc3f7;margin-bottom:10px;">' + formatCurrency(Math.abs(s.savings)) + (s.active ? ' saved' : ' potential') + '</div>' +
+        '<label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">' +
+        '<span style="font-size:0.85em;color:#b0bec5;">Include</span>' +
+        '<input type="checkbox" class="strategy-toggle-checkbox" data-strat="' + s.id + '" ' + toggleChecked + 
+        ' style="width:18px;height:18px;accent-color:#42a5f5;cursor:pointer;">' +
+        '</label></div>';
+    });
+    
+    cardsHtml += '</div>';
+    t4.innerHTML = cardsHtml;
+    page3.appendChild(t4);
+    
+    var toggleCheckboxes = t4.querySelectorAll('.strategy-toggle-checkbox');
+    toggleCheckboxes.forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var stratId = this.getAttribute('data-strat');
+        _strategyToggles[stratId] = this.checked;
+        recalculateWithToggles();
+      });
+    });
+  }
+
+
   page3.appendChild(btnDiv);
 }
+
+function recalculateWithToggles() {
+  if (!_lastResult || !_lastInputs || !_lastAllocation) return;
+  
+  var alloc = _lastAllocation;
+  var totalLosses = 0;
+  var totalOG = 0;
+  var totalDelphi = null;
+  
+  if (_strategyToggles.brooklyn && alloc.losses) {
+    totalLosses = alloc.losses;
+  }
+  if (_strategyToggles.oilgas && alloc.oilGasOffset) {
+    totalOG = alloc.oilGasOffset;
+  }
+  if (_strategyToggles.delphi && alloc.delphiAllocation) {
+    totalDelphi = alloc.delphiAllocation;
+  }
+  
+  var newAfter = computeTaxAfterStrategies(_lastInputs, totalLosses, totalOG, totalDelphi);
+  
+  var modResult = {};
+  for (var k in _lastResult) {
+    modResult[k] = _lastResult[k];
+  }
+  modResult.optimizedTax = newAfter.tax;
+  modResult.savings = _lastResult.baselineTax - newAfter.tax;
+  
+  var totalFees = computeBrookhavenFees(_lastInputs.implementation_date) || 0;
+  var netSavings = modResult.savings - totalFees;
+  modResult.roi = totalFees > 0 ? (netSavings / totalFees * 100).toFixed(1) : '0.0';
+  
+  displayResults(modResult, _lastBaseline, _lastInputs);
+}
+
 
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
