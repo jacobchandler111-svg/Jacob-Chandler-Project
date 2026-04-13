@@ -1289,11 +1289,12 @@ function displayResults(result, baseline, inputs) {
   var stratRows = '';
 
   if (a && a.key && strat && a.investment > 0) {
-    var leverageLabel = getLeverageLabel(a.key, a.leverage);
+    var displayAlloc = (a.minLeverageOption) ? a.minLeverageOption : a;
+    var leverageLabel = getLeverageLabel(displayAlloc.key, displayAlloc.leverage);
     stratRows += '<tr class="strategy-header"><td colspan="2">Brooklyn Strategy: ' + strat.name + '</td></tr>';
     stratRows += '<tr><td>Leverage</td><td>' + leverageLabel + '</td></tr>';
     stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.investment) + '</td></tr>';
-    stratRows += '<tr><td>Short-Term Losses Generated</td><td>' + formatCurrency(a.losses) + '</td></tr>';
+    stratRows += '<tr><td>Short-Term Losses Generated</td><td>' + formatCurrency(displayAlloc.losses) + '</td></tr>';
   }
 
   if (a && a.delphiInvestment > 0 && a.delphiClass) {
@@ -1314,17 +1315,12 @@ function displayResults(result, baseline, inputs) {
     stratRows += '<tr><td>Ordinary Income Offset (' + (parseFloat(inputs.oil_gas_rate || 0.95) * 100).toFixed(0) + '%)</td><td>' + formatCurrency(a.oilGasOffset) + '</td></tr>';
   }
 
-  var minLevRow = '';
-  if (a && a.minLeverageOption) {
-    var mlo = a.minLeverageOption;
-    var mloLabel = getLeverageLabel(mlo.key, mlo.leverage);
-    minLevRow = '<tr class="alt-row"><td>Lower Leverage Alternative</td><td>' + mloLabel + ' \u2014 same result within $100</td></tr>';
-  }
+
 
   t2.innerHTML = '<h3 class="table-title">With Tax Planning</h3>' +
     '<table class="results-table"><tbody>' +
     '<tr class="strategy-header"><td colspan="2">Strategies Applied</td></tr>' +
-    stratRows + minLevRow +
+    stratRows +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr><td>Optimized Tax</td><td>' + formatCurrency(result.optimizedTax) + '</td></tr>' +
     '<tr><td>New Effective Rate</td><td>' + newRate + '%</td></tr>' +
@@ -1350,6 +1346,12 @@ function displayResults(result, baseline, inputs) {
     '<tr><td>Quarterly Fee (pro-rata)</td><td>' + formatCurrency(fees.quarterlyFee) + '</td></tr>' +
     '<tr class="total-row"><td>Total Fees</td><td>' + formatCurrency(totalFees) + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
+    '<tr class="strategy-header"><td colspan="2">Strategy Fees</td></tr>' +
+    '<tr><td>Brooklyn Strategy Fee</td><td>$0</td></tr>' +
+    '<tr><td>Delphi Strategy Fee</td><td>$0</td></tr>' +
+    '<tr><td>Oil & Gas Strategy Fee</td><td>$0</td></tr>' +
+    '<tr class="spacer-row"><td colspan="2"></td></tr>' +
+    '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="savings-row"><td>Net Savings After Fees</td><td>' + formatCurrency(netSavings) + '</td></tr>' +
     '<tr class="total-row"><td>Return on Investment (Net Savings / Fees)</td><td>' + roiPct + '%</td></tr>' +
     '</tbody></table>';
@@ -1373,7 +1375,7 @@ function displayResults(result, baseline, inputs) {
     strategies.push({
       id: 'brooklyn',
       name: 'Brooklyn Tax Loss Harvesting',
-      detail: (bStrat.name || alloc.key) + ' | Leverage: ' + getLeverageLabel(alloc.key, alloc.leverage),
+      detail: (bStrat.name || alloc.key) + ' | Leverage: ' + getLeverageLabel((alloc.minLeverageOption || alloc).key, (alloc.minLeverageOption || alloc).leverage),
       investment: alloc.investment,
       losses: alloc.losses || 0,
       active: _strategyToggles.brooklyn
