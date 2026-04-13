@@ -1642,12 +1642,12 @@ function updateLeverageSliderLabel(pct) {
   if (!label) return;
   var leverage = (pct / 100 * 2.25);
   var desc = '';
-  if (pct <= 0) desc = 'Conservative (Long-Only)';
-  else if (pct <= 15) desc = 'Conservative (130/30)';
-  else if (pct <= 25) desc = 'Moderate-Conservative (145/45)';
-  else if (pct <= 50) desc = 'Moderate (200/100)';
-  else if (pct <= 70) desc = 'Moderate-Aggressive (250/150)';
-  else desc = 'Aggressive (325/225)';
+  if (pct <= 0) desc = 'Conservative';
+  else if (pct <= 15) desc = 'Conservative';
+  else if (pct <= 25) desc = 'Moderate-Conservative';
+  else if (pct <= 50) desc = 'Moderate';
+  else if (pct <= 70) desc = 'Moderate-Aggressive';
+  else desc = 'Aggressive';
   label.textContent = desc + ' \u2014 Leverage: ' + leverage.toFixed(2);
 }
 
