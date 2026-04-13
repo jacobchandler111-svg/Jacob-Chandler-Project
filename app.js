@@ -1024,8 +1024,14 @@ function renderPresetQuestion(container, q, section) {
   sel.onchange = function() {
     userAnswers['_preset_leverage'] = this.value;
     userAnswers[q.trigger] = !!this.value;
-    var presetEl = document.getElementById('brooklyn_preset');
-    if (presetEl && this.value) presetEl.value = this.value;
+    var stratForSlider = BROOKLYN_STRATEGIES[getBrooklynStrategyKey(userAnswers.advisor_managed === true, parseFloat(userAnswers['_select_beta_selection_q'] || '1'))];
+    if (stratForSlider) {
+      var dpMatch = stratForSlider.dataPoints.find(function(p) { return p.label === this.value; }.bind(this));
+      if (dpMatch) {
+        var slider = document.getElementById('leverage_preference');
+        if (slider) { var pct = Math.round((dpMatch.leverage / 2.25) * 100); slider.value = pct; if (typeof updateLeverageSliderLabel === 'function') updateLeverageSliderLabel(pct); }
+      }
+    }
     autoFillLeverage();
     updateProgress();
   };
@@ -1050,14 +1056,17 @@ function autoFillLeverage() {
       if (levEl) levEl.value = dp.leverage;
       var customEl = document.getElementById('custom_leverage_value');
       if (customEl) customEl.value = dp.leverage;
+      var slider = document.getElementById('leverage_preference');
+      if (slider) { var pct = Math.round((dp.leverage / 2.25) * 100); slider.value = pct; if (typeof updateLeverageSliderLabel === 'function') updateLeverageSliderLabel(pct); }
     }
   } else if (strat && strat.dataPoints.length > 0) {
-    // Default to first preset
     var dp = strat.dataPoints[0];
     var levEl = document.getElementById('max_leverage');
     if (levEl) levEl.value = dp.leverage;
     var customEl = document.getElementById('custom_leverage_value');
     if (customEl) customEl.value = dp.leverage;
+    var slider = document.getElementById('leverage_preference');
+    if (slider) { var pct = Math.round((dp.leverage / 2.25) * 100); slider.value = pct; if (typeof updateLeverageSliderLabel === 'function') updateLeverageSliderLabel(pct); }
   }
 }
 
@@ -1174,7 +1183,7 @@ function getFormInputs() {
     'dividend_income','retirement_distributions','st_gains','lt_gains','portfolio_value',
     'cost_basis','charitable','salt','retirement_contrib','property_values','taxpayer_age','state',
     'implementation_date','available_capital','max_leverage','beta_selection',
-    'brooklyn_preset','custom_leverage_value','filing_status','tax_year',
+    'leverage_preference','custom_leverage_value','filing_status','tax_year',
     'oil_gas_max','oil_gas_rate','months_remaining'];
   var inp = {};
   fields.forEach(function(f) {
@@ -1203,13 +1212,9 @@ function calculateStrategies() {
   var leverage = 0.3;
   if (customLev && inp.custom_leverage_value) {
     leverage = parseFloat(inp.custom_leverage_value);
-  } else if (inp.brooklyn_preset) {
-    var presetMap = {
-      'Long-Only': 0, '100/100': 1.0, '130/30': 0.3, '145/45': 0.45,
-      '160/60': 0.6, '200/100': 1.0, '225/125': 1.25, '250/150': 1.5,
-      '275/275': 2.75, '325/225': 2.25, '150/150': 1.5, '200/200': 2.0
-    };
-    leverage = presetMap[inp.brooklyn_preset] || 0.3;
+  } else if (inp.leverage_preference !== undefined && inp.leverage_preference !== '') {
+    var sliderVal = parseFloat(inp.leverage_preference) || 0;
+    leverage = sliderVal / 100 * 2.25;
   }
   var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
   var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
@@ -1630,10 +1635,42 @@ function evaluateAllStrategies(inputs) {
 
 
 
+
+// --- Leverage Preference Slider ---
+function updateLeverageSliderLabel(pct) {
+  var label = document.getElementById('leverage_pref_label');
+  if (!label) return;
+  var leverage = (pct / 100 * 2.25);
+  var desc = '';
+  if (pct <= 0) desc = 'Conservative (Long-Only)';
+  else if (pct <= 15) desc = 'Conservative (130/30)';
+  else if (pct <= 25) desc = 'Moderate-Conservative (145/45)';
+  else if (pct <= 50) desc = 'Moderate (200/100)';
+  else if (pct <= 70) desc = 'Moderate-Aggressive (250/150)';
+  else desc = 'Aggressive (325/225)';
+  label.textContent = desc + ' \u2014 Leverage: ' + leverage.toFixed(2);
+}
+
+function setupLeverageSlider() {
+  var slider = document.getElementById('leverage_preference');
+  if (!slider) return;
+  slider.addEventListener('input', function() {
+    var pct = parseInt(this.value);
+    updateLeverageSliderLabel(pct);
+    var leverage = (pct / 100 * 2.25);
+    var levEl = document.getElementById('max_leverage');
+    if (levEl) levEl.value = leverage;
+    var customEl = document.getElementById('custom_leverage_value');
+    if (customEl) customEl.value = leverage;
+  });
+  updateLeverageSliderLabel(0);
+}
+
 // --- Initialization ---
 buildQuestions();
 loadStrategies();
 loadTaxBrackets();
+setupLeverageSlider();
 
 
 
