@@ -680,7 +680,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
-    roi: totalInvestment > 0 ? ((baseline.tax - bestTax) / totalInvestment * 100).toFixed(1) + '%' : '0%'
+    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== 'undefined' && inputs.implementation_date) || new Date().toISOString().split('T')[0]; var f = computeBrookhavenFees(implDate); var netSav = grossSav - f.totalFee; return f.totalFee > 0 ? (netSav / f.totalFee * 100).toFixed(1) + '%' : (grossSav > 0 ? '\u221e' : '0%'); })()
   };
 }
 
@@ -1323,7 +1323,7 @@ function displayResults(result, baseline, inputs) {
   t3.className = 'results-table-section summary-section';
   var totalFees = fees.totalFee;
   var netSavings = result.savings - totalFees;
-  var roiPct = totalFees > 0 ? (result.savings / totalFees * 100).toFixed(1) : (result.savings > 0 ? '\u221e' : '0');
+  var roiPct = totalFees > 0 ? (netSavings / totalFees * 100).toFixed(1) : (result.savings > 0 ? '\u221e' : '0');
 
   t3.innerHTML = '<h3 class="table-title summary-title">Return on Planning</h3>' +
     '<table class="results-table summary-table"><tbody>' +
@@ -1337,7 +1337,7 @@ function displayResults(result, baseline, inputs) {
     '<tr class="total-row"><td>Total Fees</td><td>' + formatCurrency(totalFees) + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="savings-row"><td>Net Savings After Fees</td><td>' + formatCurrency(netSavings) + '</td></tr>' +
-    '<tr class="total-row"><td>Return on Investment (Savings / Fees)</td><td>' + roiPct + '%</td></tr>' +
+    '<tr class="total-row"><td>Return on Investment (Net Savings / Fees)</td><td>' + roiPct + '%</td></tr>' +
     '</tbody></table>';
   page3.appendChild(t3);
 
