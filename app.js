@@ -413,8 +413,9 @@ function computeBaselineTax(inputs) {
   }
   let stateTax = calculateStateTax(ordinaryIncome + ltg, stateCode, year, f);
   stateTax += calculateWaCapGainsTax(ltg, stateCode, year);
-  const totalTax = federalTax + stateTax;
-  return { tax: Math.round(totalTax), federalTax: Math.round(federalTax), stateTax: Math.round(stateTax), totalIncome: Math.round(totalIncome), ordinaryIncome: Math.round(ordinaryIncome), taxableOrdinary: Math.round(taxableOrdinary), filing: f, year: year, state: stateCode };
+  const roundedFed = Math.round(federalTax);
+  const roundedState = Math.round(stateTax);
+  return { tax: roundedFed + roundedState, federalTax: roundedFed, stateTax: roundedState, totalIncome: Math.round(totalIncome), ordinaryIncome: Math.round(ordinaryIncome), taxableOrdinary: Math.round(taxableOrdinary), filing: f, year: year, state: stateCode };
 }
 
 function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAlloc) {
@@ -468,8 +469,9 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
   }
   let stateTax = calculateStateTax(ordinaryIncome + Math.max(0, adjLtg), stateCode, year, f);
   stateTax += calculateWaCapGainsTax(Math.max(0, adjLtg), stateCode, year);
-  const totalTax = federalTax + stateTax;
-  return { tax: Math.round(totalTax), federalTax: Math.round(federalTax), stateTax: Math.round(stateTax), totalIncome: Math.round(totalIncome), carryForwardLoss: Math.round(remainingLoss) };
+  const roundedFed2 = Math.round(federalTax);
+  const roundedState2 = Math.round(stateTax);
+  return { tax: roundedFed2 + roundedState2, federalTax: roundedFed2, stateTax: roundedState2, totalIncome: Math.round(totalIncome), carryForwardLoss: Math.round(remainingLoss) };
 }
 
 // ================================================================
@@ -1162,17 +1164,30 @@ function updateProgress() {
   if (label) label.textContent = pct + '%';
 }
 
-function updateMatchCount() {
-  if (!strategiesData.length) return;
-  var count = 0;
-  strategiesData.forEach(function(s) {
-    if (!s.triggers) return;
-    var matched = s.triggers.every(function(t) { return userAnswers[t] === true; });
-    if (matched) count++;
-  });
-  var el = document.getElementById('match-count');
-  if (el) el.textContent = count;
-}
+  function updateMatchCount() {
+    if (!strategiesData || !strategiesData.length) return;
+    var triggerMap = {};
+    if (userAnswers.earned_income) triggerMap.high_income = true;
+    if (userAnswers.w2_employee) { triggerMap.employee_compensation = true; triggerMap.retirement_planning = true; }
+    if (userAnswers.has_business) { triggerMap.business_owner = true; triggerMap.entity_selection = true; triggerMap.employee_expenses = true; triggerMap.vehicle_expense = true; triggerMap.equipment_purchase = true; }
+    if (userAnswers.has_self_employment) { triggerMap.self_employed = true; triggerMap.sole_proprietor = true; triggerMap.business_owner = true; }
+    if (userAnswers.has_rental) { triggerMap.rental_property = true; triggerMap.real_estate = true; triggerMap.investment_property = true; triggerMap.property_purchase = true; }
+    if (userAnswers.appreciated_asset) { triggerMap.appreciated_assets = true; triggerMap.capital_gains = true; triggerMap.long_term_capital_gains = true; triggerMap.investments = true; }
+    if (userAnswers.stock_options) { triggerMap.stock_options = true; triggerMap.employee_compensation = true; }
+    if (userAnswers.has_dividend_income) { triggerMap.dividend_income = true; triggerMap.investments = true; }
+    if (userAnswers.has_retirement_income) { triggerMap.retirement_planning = true; }
+    if (userAnswers.is_s_corp) { triggerMap.s_corp = true; triggerMap.entity_selection = true; }
+    if (userAnswers.is_partnership) { triggerMap.partnership = true; triggerMap.entity_selection = true; }
+    if (userAnswers.sector_allocation) { triggerMap.natural_resources = true; }
+    var count = 0;
+    strategiesData.forEach(function(s) {
+      if (!s.triggers || !s.triggers.length) return;
+      var matched = s.triggers.every(function(t) { return triggerMap[t] === true; });
+      if (matched) count++;
+    });
+    var el = document.getElementById("match-count");
+    if (el) el.textContent = count;
+  }
 
 function updateBrooklynUI() {
   var customLev = userAnswers.custom_leverage;
@@ -1231,7 +1246,7 @@ function calculateStrategies() {
   _lastBaseline = baseline;
   _lastInputs = inp;
   _lastAllocation = result.allocation && result.allocation.length > 0 ? result.allocation[0] : null;
-  _strategyToggles = { brooklyn: true, oilgas: true, delphi: true };
+    if (!_lastResult) _strategyToggles = { brooklyn: true, oilgas: true, delphi: true };
   displayResults(result, baseline, inp);
 }
 
@@ -1857,3 +1872,4 @@ setupLeverageSlider();
 
 
 
+h
