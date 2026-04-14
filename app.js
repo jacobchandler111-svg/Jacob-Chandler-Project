@@ -198,10 +198,10 @@ function computeHelixAllocation(classKey, investmentAmount, investmentDate) {
     const d = parseLocalDate(investmentDate);
     const year = d.getFullYear();
     const startOfYear = new Date(year, 0, 1);
-    const endOfYear = new Date(year + 1, 0, 1);
-    const totalDays = (endOfYear - startOfYear) / 86400000;
-    const remaining = (endOfYear - d) / 86400000;
-    timeWeight = remaining / totalDays;
+    const endOfYear = new Date(year, 11, 31);
+    const msInYear = endOfYear - startOfYear;
+    const remaining = endOfYear - d;
+    timeWeight = Math.max(0, Math.min(1, remaining / msInYear));
   }
 
   const alloc = fund.allocations;
@@ -510,6 +510,9 @@ function computeBaselineTax(inputs) {
   if (totalIncome > niitThreshold) {
     federalTax += Math.min(div + ltg + stg + rent, totalIncome - niitThreshold) * 0.038;
   }
+  // Apply foreign tax credit from Delphi/Helix
+  var foreignTaxCredit = (delphiAlloc ? Math.abs(delphiAlloc.foreignTaxesPaid || 0) : 0) + (helixAlloc ? Math.abs(helixAlloc.foreignTaxesPaid || 0) : 0);
+  federalTax = Math.max(0, federalTax - foreignTaxCredit);
   let stateTax = calculateStateTax(ordinaryIncome + ltg, stateCode, year, f);
   stateTax += calculateWaCapGainsTax(ltg, stateCode, year);
   const roundedFed = Math.round(federalTax);
@@ -548,11 +551,13 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
     helixOrdinaryOffset = Math.abs(helixAlloc.ordinaryIncomeExpense || 0);
     helixSTLoss = Math.abs(helixAlloc.shortTermCapitalGainLoss || 0);
     helixLTCG = helixAlloc.longTermCapitalGainLoss || 0;
+  var delphiQD = delphiAlloc ? (delphiAlloc.qualifiedDividends || 0) : 0;
+  var helixQD = helixAlloc ? (helixAlloc.qualifiedDividends || 0) : 0;
   }
 
   let remainingLoss = totalSTLosses + delphiSTLoss + helixSTLoss;
   let adjStg = stg;
-  let adjLtg = ltg + delphiLTCG + helixLTCG;
+  let adjLtg = ltg + delphiLTCG + helixLTCG + delphiQD + helixQD;
   const stOffset = Math.min(remainingLoss, adjStg);
   adjStg -= stOffset;
   remainingLoss -= stOffset;
@@ -844,7 +849,12 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
       if (bestEntry.investment > 0 && bestEntry.investment < levMinInv) continue;
       var losses2 = computeBrooklynLoss(bestEntry.key, tryLev, bestEntry.investment, implementationDate);
       var result2 = computeTaxAfterStrategies(inputs, losses2, bestEntry.oilGasOffset || 0, bestEntry.delphiAllocation || null, bestEntry.helixAllocation || null);
-      if (result2.tax <= targetTax + 100) {
+      var interp2 = interpolateBrooklyn(bestEntry.key, tryLev);
+      var bkFee2 = bestEntry.investment * (interp2.feeRate || 0);
+      var dFee2 = bestEntry.delphiAllocation ? bestEntry.delphiAllocation.managementFee || 0 : 0;
+      var hFee2 = bestEntry.helixAllocation ? bestEntry.helixAllocation.managementFee || 0 : 0;
+      var totalCost2 = result2.tax + bkFee2 + dFee2 + hFee2;
+      if (totalCost2 <= bestTotalCost + 100) {
         minLev = tryLev;
         minLevAllocation = {
           key: bestEntry.key, leverage: tryLev, investment: bestEntry.investment,
@@ -879,7 +889,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
-    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== 'undefined' && inputs.implementation_date) || new Date().toISOString().split('T')[0]; var f = computeBrookhavenFees(implDate); var netSav = grossSav - f.totalFee; return f.totalFee > 0 ? (netSav / f.totalFee * 100).toFixed(1) + '%' : (grossSav > 0 ? '\u221e' : '0%'); })()
+    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== "undefined" && inputs.implementation_date) || new Date().toISOString().split("T")[0]; var f = computeBrookhavenFees(implDate); var stratFees = 0; if (bestAllocation.length > 0) { var ba = bestAllocation[0]; stratFees += ba.brooklynFee || 0; if (ba.delphiAllocation) stratFees += ba.delphiAllocation.managementFee || 0; if (ba.helixAllocation) stratFees += ba.helixAllocation.managementFee || 0; } var totalFees = f.totalFee + stratFees; var netSav = grossSav - totalFees; return totalFees > 0 ? (netSav / totalFees * 100).toFixed(1) + "%" : (grossSav > 0 ? "\u221e" : "0"); })()()
   };
 }
 
@@ -1499,7 +1509,7 @@ function displayResults(result, baseline, inputs) {
   var stratRows = '';
 
   if (a && a.key && strat && a.investment > 0) {
-    var displayAlloc = (a.minLeverageOption) ? a.minLeverageOption : a;
+    var displayAlloc = a; // Use actual optimized allocation for consistent display
     var leverageLabel = getLeverageLabel(displayAlloc.key, displayAlloc.leverage);
     stratRows += '<tr class="strategy-header"><td colspan="2">Brooklyn Strategy: ' + strat.name + '</td></tr>';
     stratRows += '<tr><td>Leverage</td><td>' + leverageLabel + '</td></tr>';
