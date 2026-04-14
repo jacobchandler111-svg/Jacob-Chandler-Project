@@ -166,6 +166,64 @@ function getDelphiMinInvestment(classKey) {
   return fund ? fund.minInvestment : 0;
 }
 
+const HELIX_STRATEGIES = {
+  standard: {
+    id: 'helix_standard',
+    name: 'TA Helix',
+    minInvestment: 1000000,
+    managementFee: 0.0285,
+    liquidity: 'Monthly',
+    liquidityNotice: '30 days',
+    allocations: {
+      shortTermCapitalGainLoss: -0.2390,
+      ordinaryIncomeExpense: -0.1180,
+      longTermCapitalGainLoss: 0.1150,
+      qualifiedDividends: 0.0430,
+      foreignTaxesPaid: -0.0050
+    }
+  }
+};
+
+function computeHelixAllocation(classKey, investmentAmount, investmentDate) {
+  const fund = HELIX_STRATEGIES[classKey];
+  if (!fund) return null;
+  if (investmentAmount < fund.minInvestment) return null;
+
+  const managementFee = investmentAmount * fund.managementFee;
+  const netInvestment = investmentAmount - managementFee;
+
+  // Time-weight by remaining fraction of the year
+  let timeWeight = 1;
+  if (investmentDate) {
+    const d = parseLocalDate(investmentDate);
+    const year = d.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year + 1, 0, 1);
+    const totalDays = (endOfYear - startOfYear) / 86400000;
+    const remaining = (endOfYear - d) / 86400000;
+    timeWeight = remaining / totalDays;
+  }
+
+  const alloc = fund.allocations;
+  return {
+    shortTermCapitalGainLoss: netInvestment * alloc.shortTermCapitalGainLoss * timeWeight,
+    ordinaryIncomeExpense: netInvestment * alloc.ordinaryIncomeExpense * timeWeight,
+    longTermCapitalGainLoss: netInvestment * alloc.longTermCapitalGainLoss * timeWeight,
+    qualifiedDividends: netInvestment * alloc.qualifiedDividends * timeWeight,
+    foreignTaxesPaid: netInvestment * alloc.foreignTaxesPaid * timeWeight,
+    netOrdinaryOffset: netInvestment * (alloc.ordinaryIncomeExpense + alloc.shortTermCapitalGainLoss) * timeWeight,
+    netLTCG: netInvestment * alloc.longTermCapitalGainLoss * timeWeight,
+    managementFee: managementFee,
+    className: fund.name,
+    liquidity: fund.liquidity,
+    liquidityNotice: fund.liquidityNotice
+  };
+}
+
+function getHelixMinInvestment(classKey) {
+  return HELIX_STRATEGIES[classKey] ? HELIX_STRATEGIES[classKey].minInvestment : Infinity;
+}
+
 function interpolateBrooklyn(strategyKey, leverage) {
   const strat = BROOKLYN_STRATEGIES[strategyKey];
   if (!strat) return { lossRate: 0, feeRate: 0 };
@@ -459,7 +517,7 @@ function computeBaselineTax(inputs) {
   return { tax: roundedFed + roundedState, federalTax: roundedFed, stateTax: roundedState, totalIncome: Math.round(totalIncome), ordinaryIncome: Math.round(ordinaryIncome), taxableOrdinary: Math.round(taxableOrdinary), filing: f, year: year, state: stateCode };
 }
 
-function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAlloc) {
+function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAlloc, helixAlloc) {
   const fm = { 'Single': 'single', 'Married Filing Jointly': 'married_joint', 'Married Filing Separately': 'married_separate', 'Head of Household': 'head_household' };
   const f = fm[inputs.filing_status || 'Single'] || 'single';
   const year = inputs.tax_year || getSelectedTaxYear();
@@ -482,9 +540,19 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
     delphiLTCG = delphiAlloc.longTermCapitalGainLoss || 0;
   }
 
-  let remainingLoss = totalSTLosses + delphiSTLoss;
+  // Helix adjustments
+  var helixOrdinaryOffset = 0;
+  var helixSTLoss = 0;
+  var helixLTCG = 0;
+  if (helixAlloc) {
+    helixOrdinaryOffset = Math.abs(helixAlloc.ordinaryIncomeExpense || 0);
+    helixSTLoss = Math.abs(helixAlloc.shortTermCapitalGainLoss || 0);
+    helixLTCG = helixAlloc.longTermCapitalGainLoss || 0;
+  }
+
+  let remainingLoss = totalSTLosses + delphiSTLoss + helixSTLoss;
   let adjStg = stg;
-  let adjLtg = ltg + delphiLTCG;
+  let adjLtg = ltg + delphiLTCG + helixLTCG;
   const stOffset = Math.min(remainingLoss, adjStg);
   adjStg -= stOffset;
   remainingLoss -= stOffset;
@@ -496,7 +564,7 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
   remainingLoss -= ordinaryOffset;
   const ogOffset = oilGasOffset || 0;
   const seDeduction = se > 0 ? se * getSeTaxMultiplier(year) * getSeTaxRate(year) * 0.5 : 0;
-  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset - delphiOrdinaryOffset - seDeduction;
+  const ordinaryIncome = w2 + se + biz + rent + div + adjStg - ordinaryOffset - ogOffset - delphiOrdinaryOffset - helixOrdinaryOffset - seDeduction;
   const totalIncome = ordinaryIncome + Math.max(0, adjLtg);
   const sd = getStandardDeduction(year, f);
   const taxableOrdinary = Math.max(0, ordinaryIncome - sd);
@@ -554,6 +622,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   let bestLosses = 0;
   let bestOilGasOffset = 0;
   let bestDelphiAlloc = null;
+  let bestHelixAlloc = null;
 
   const ogMaxInvest = parseFloat(inputs.oil_gas_max || 0);
   const ogRate = parseFloat(inputs.oil_gas_rate || 0.95);
@@ -565,20 +634,24 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   const steps = 20;
   const ogSteps = 10;
   const delphiSteps = 5;
+  const helixSteps = 5;
 
   // Determine eligible Delphi classes
   var delphiClasses = [];
+  var helixClasses = [];
   if (availableCapital >= 5000000) delphiClasses.push('classA');
   if (availableCapital >= 1000000) delphiClasses.push('classB');
+  if (availableCapital >= 1000000) helixClasses.push('standard');
 
   // Helper to try a combination and track the best
-  function tryCombo(brooklynKey, brooklynInvest, lev, ogInvest, delphiClass, delphiInvest) {
-      var totalUsed = brooklynInvest + ogInvest + delphiInvest;
+  function tryCombo(brooklynKey, brooklynInvest, lev, ogInvest, delphiClass, delphiInvest, helixClass, helixInvest) {
+      var totalUsed = brooklynInvest + ogInvest + delphiInvest + (helixInvest || 0);
       if (totalUsed > availableCapital * 1.001) return; // tolerance
       var losses = (brooklynInvest && brooklynKey) ? computeBrooklynLoss(brooklynKey, lev, brooklynInvest, implementationDate) : 0;
       var ogOffset = ogInvest * ogRate;
       var dAlloc = (delphiInvest && delphiClass) ? computeDelphiAllocation(delphiClass, delphiInvest, implementationDate) : null;
-      var result = computeTaxAfterStrategies(inputs, losses, ogOffset, dAlloc);
+      var hAlloc = (helixInvest && helixClass) ? computeHelixAllocation(helixClass, helixInvest, implementationDate) : null;
+      var result = computeTaxAfterStrategies(inputs, losses, ogOffset, dAlloc, hAlloc);
       // Compute Brooklyn strategy fee using interpolated feeRate
       var brooklynFeeRate = 0;
       var brooklynFee = 0;
@@ -596,11 +669,13 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
           key: brooklynKey, leverage: lev, investment: brooklynInvest,
           losses: losses, brooklynFeeRate: brooklynFeeRate, brooklynFee: brooklynFee,
           oilGasInvestment: ogInvest, oilGasOffset: ogOffset,
-          delphiClass: delphiClass, delphiInvestment: delphiInvest, delphiAllocation: dAlloc
+          delphiClass: delphiClass, delphiInvestment: delphiInvest, delphiAllocation: dAlloc,
+            helixClass: helixClass || null, helixInvestment: helixInvest || 0, helixAllocation: hAlloc
         };
         bestLosses = losses;
         bestOilGasOffset = ogOffset;
         bestDelphiAlloc = dAlloc;
+        bestHelixAlloc = hAlloc;
       }
     }
 
@@ -628,8 +703,20 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
         var ogInvest = ogStepSize * ogStep;
         var remainingAfterBoth = remainingAfterBrooklyn - ogInvest;
 
-        // Try without Delphi
-        tryCombo(s.key, brooklynInvest, lev, ogInvest, null, 0);
+        // Try without Delphi or Helix
+        tryCombo(s.key, brooklynInvest, lev, ogInvest, null, 0, null, 0);
+        // Try with Helix only (no Delphi)
+        for (var hi = 0; hi < helixClasses.length; hi++) {
+          var hc = helixClasses[hi];
+          var helixMin = getHelixMinInvestment(hc);
+          var helixMax = Math.max(0, remainingAfterBoth);
+          if (helixMax < helixMin) continue;
+          var hStepSize = (helixMax - helixMin) / helixSteps;
+          for (var hStep = 0; hStep <= helixSteps; hStep++) {
+            var hInvest = helixMin + hStepSize * hStep;
+            tryCombo(s.key, brooklynInvest, lev, ogInvest, null, 0, hc, hInvest);
+          }
+        }
 
         // Try with Delphi
         for (var di = 0; di < delphiClasses.length; di++) {
@@ -641,7 +728,18 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
           var dStepSize = (delphiMax - delphiMin) / delphiSteps;
           for (var dStep = 0; dStep <= delphiSteps; dStep++) {
             var dInvest = delphiMin + dStepSize * dStep;
-            tryCombo(s.key, brooklynInvest, lev, ogInvest, dc, dInvest);
+            tryCombo(s.key, brooklynInvest, lev, ogInvest, dc, dInvest, null, 0);
+              // Also try Delphi + Helix
+              for (var hi2 = 0; hi2 < helixClasses.length; hi2++) {
+                var hc2 = helixClasses[hi2];
+                var hMin2 = getHelixMinInvestment(hc2);
+                var hMax2 = Math.max(0, remainingAfterBoth - dInvest);
+                if (hMax2 < hMin2) continue;
+                var hStep2 = (hMax2 - hMin2) / helixSteps;
+                for (var hs2 = 0; hs2 <= helixSteps; hs2++) {
+                  tryCombo(s.key, brooklynInvest, lev, ogInvest, dc, dInvest, hc2, hMin2 + hStep2 * hs2);
+                }
+              }
           }
         }
       }
@@ -657,7 +755,18 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
       var remainOG = availableCapital - ogInvest2;
 
       // O&G only, no Delphi
-      tryCombo(null, 0, 0, ogInvest2, null, 0);
+      tryCombo(null, 0, 0, ogInvest2, null, 0, null, 0);
+          // O&G + Helix only
+          for (var hi3 = 0; hi3 < helixClasses.length; hi3++) {
+            var hc3 = helixClasses[hi3];
+            var hMin3 = getHelixMinInvestment(hc3);
+            var hMax3 = Math.max(0, remainOG);
+            if (hMax3 < hMin3) continue;
+            var hStep3 = (hMax3 - hMin3) / helixSteps;
+            for (var hs3 = 0; hs3 <= helixSteps; hs3++) {
+              tryCombo(null, 0, 0, ogInvest2, null, 0, hc3, hMin3 + hStep3 * hs3);
+            }
+          }
 
       // O&G + Delphi
       for (var di2 = 0; di2 < delphiClasses.length; di2++) {
@@ -667,7 +776,18 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
         if (dMax2 < dMin2) continue;
         var dStep2 = (dMax2 - dMin2) / delphiSteps;
         for (var ds2 = 0; ds2 <= delphiSteps; ds2++) {
-          tryCombo(null, 0, 0, ogInvest2, dc2, dMin2 + dStep2 * ds2);
+          tryCombo(null, 0, 0, ogInvest2, dc2, dMin2 + dStep2 * ds2, null, 0);
+                // O&G + Delphi + Helix
+                for (var hi4 = 0; hi4 < helixClasses.length; hi4++) {
+                  var hc4 = helixClasses[hi4];
+                  var hMin4 = getHelixMinInvestment(hc4);
+                  var hMax4 = Math.max(0, remainOG - (dMin2 + dStep2 * ds2));
+                  if (hMax4 < hMin4) continue;
+                  var hStep4 = (hMax4 - hMin4) / helixSteps;
+                  for (var hs4 = 0; hs4 <= helixSteps; hs4++) {
+                    tryCombo(null, 0, 0, ogInvest2, dc2, dMin2 + dStep2 * ds2, hc4, hMin4 + hStep4 * hs4);
+                  }
+                }
         }
       }
     }
@@ -681,7 +801,30 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     if (dMax3 < dMin3) continue;
     var dStep3 = (dMax3 - dMin3) / delphiSteps;
     for (var ds3 = 0; ds3 <= delphiSteps; ds3++) {
-      tryCombo(null, 0, 0, 0, dc3, dMin3 + dStep3 * ds3);
+      tryCombo(null, 0, 0, 0, dc3, dMin3 + dStep3 * ds3, null, 0);
+            // Delphi + Helix
+            for (var hi5 = 0; hi5 < helixClasses.length; hi5++) {
+              var hc5 = helixClasses[hi5];
+              var hMin5 = getHelixMinInvestment(hc5);
+              var hMax5 = Math.max(0, availableCapital - (dMin3 + dStep3 * ds3));
+              if (hMax5 < hMin5) continue;
+              var hStep5 = (hMax5 - hMin5) / helixSteps;
+              for (var hs5 = 0; hs5 <= helixSteps; hs5++) {
+                tryCombo(null, 0, 0, 0, dc3, dMin3 + dStep3 * ds3, hc5, hMin5 + hStep5 * hs5);
+              }
+            }
+    }
+  }
+
+  // Helix only (no Brooklyn, no O&G, no Delphi)
+  for (var hi6 = 0; hi6 < helixClasses.length; hi6++) {
+    var hc6 = helixClasses[hi6];
+    var hMin6 = getHelixMinInvestment(hc6);
+    var hMax6 = availableCapital;
+    if (hMax6 < hMin6) continue;
+    var hStep6 = (hMax6 - hMin6) / helixSteps;
+    for (var hs6 = 0; hs6 <= helixSteps; hs6++) {
+      tryCombo(null, 0, 0, 0, null, 0, hc6, hMin6 + hStep6 * hs6);
     }
   }
 
@@ -696,7 +839,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
       var levMinInv = getMinInvestmentForLeverage(bestEntry.key, tryLev);
       if (bestEntry.investment > 0 && bestEntry.investment < levMinInv) continue;
       var losses2 = computeBrooklynLoss(bestEntry.key, tryLev, bestEntry.investment, implementationDate);
-      var result2 = computeTaxAfterStrategies(inputs, losses2, bestEntry.oilGasOffset || 0, bestEntry.delphiAllocation || null);
+      var result2 = computeTaxAfterStrategies(inputs, losses2, bestEntry.oilGasOffset || 0, bestEntry.delphiAllocation || null, bestEntry.helixAllocation || null);
       if (result2.tax <= targetTax + 100) {
         minLev = tryLev;
         minLevAllocation = {
@@ -704,7 +847,9 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
           losses: losses2, oilGasInvestment: bestEntry.oilGasInvestment || 0,
           oilGasOffset: bestEntry.oilGasOffset || 0,
           delphiClass: bestEntry.delphiClass, delphiInvestment: bestEntry.delphiInvestment || 0,
-          delphiAllocation: bestEntry.delphiAllocation
+          delphiAllocation: bestEntry.delphiAllocation,
+          helixClass: bestEntry.helixClass || null, helixInvestment: bestEntry.helixInvestment || 0,
+          helixAllocation: bestEntry.helixAllocation || null
         };
       } else { break; }
     }
@@ -714,7 +859,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   }
 
   var a0 = bestAllocation.length > 0 ? bestAllocation[0] : null;
-  var totalInvestment = a0 ? (a0.investment || 0) + (a0.oilGasInvestment || 0) + (a0.delphiInvestment || 0) : 0;
+  var totalInvestment = a0 ? (a0.investment || 0) + (a0.oilGasInvestment || 0) + (a0.delphiInvestment || 0) + (a0.helixInvestment || 0) : 0;
 
   return {
     baselineTax: baseline.tax,
@@ -726,6 +871,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     totalLosses: bestLosses,
     totalOilGasOffset: bestOilGasOffset,
     totalDelphiAlloc: bestDelphiAlloc,
+    totalHelixAlloc: bestHelixAlloc,
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
@@ -1267,7 +1413,7 @@ var _lastResult = null;
 var _lastBaseline = null;
 var _lastInputs = null;
 var _lastAllocation = null;
-var _strategyToggles = { brooklyn: true, oilgas: true, delphi: true };
+var _strategyToggles = { brooklyn: true, oilgas: true, delphi: true, helix: true };
 
 function calculateStrategies() {
   var inp = getFormInputs();
@@ -1291,7 +1437,7 @@ function calculateStrategies() {
   _lastBaseline = baseline;
   _lastInputs = inp;
   _lastAllocation = result.allocation && result.allocation.length > 0 ? result.allocation[0] : null;
-    if (!_lastResult) _strategyToggles = { brooklyn: true, oilgas: true, delphi: true };
+    if (!_lastResult) _strategyToggles = { brooklyn: true, oilgas: true, delphi: true, helix: true };
   displayResults(result, baseline, inp);
 }
 
@@ -1300,7 +1446,7 @@ function displayResults(result, baseline, inputs) {
   var strat = a && a.key ? BROOKLYN_STRATEGIES[a.key] : null;
   var effRate = result.totalIncome > 0 ? (result.baselineTax / result.totalIncome * 100).toFixed(1) : '0';
   var newRate = result.totalIncome > 0 ? (result.optimizedTax / result.totalIncome * 100).toFixed(1) : '0';
-  var totalInvested = a ? (a.investment || 0) + (a.oilGasInvestment || 0) + (a.delphiInvestment || 0) : 0;
+  var totalInvested = a ? (a.investment || 0) + (a.oilGasInvestment || 0) + (a.delphiInvestment || 0) + (a.helixInvestment || 0) : 0;
 
   // Compute fees
   var implDate = inputs.implementation_date || new Date().toISOString().split('T')[0];
@@ -1369,7 +1515,19 @@ function displayResults(result, baseline, inputs) {
     }
   }
 
-  if (a && a.oilGasInvestment > 0) {
+  if (a && (a.helixInvestment || 0) > 0 && a.helixClass) {
+      var helixFund = HELIX_STRATEGIES[a.helixClass];
+      var hxAlloc = a.helixAllocation;
+      stratRows += '<tr class="strategy-header"><td colspan="2">Helix Strategy (' + (helixFund ? helixFund.name : a.helixClass) + ')</td></tr>';
+      stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.helixInvestment) + '</td></tr>';
+      if (hxAlloc) {
+        stratRows += '<tr><td>Ordinary Income Offset</td><td>' + formatCurrency(Math.abs(hxAlloc.ordinaryIncomeExpense)) + '</td></tr>';
+        stratRows += '<tr><td>ST Loss Generated</td><td>' + formatCurrency(Math.abs(hxAlloc.shortTermCapitalGainLoss)) + '</td></tr>';
+        stratRows += '<tr><td>LT Capital Gain</td><td>' + formatCurrency(hxAlloc.longTermCapitalGainLoss) + '</td></tr>';
+      }
+    }
+
+    if (a && a.oilGasInvestment > 0) {
     stratRows += '<tr class="strategy-header"><td colspan="2">Oil & Gas Strategy</td></tr>';
     stratRows += '<tr><td>Investment</td><td>' + formatCurrency(a.oilGasInvestment) + '</td></tr>';
     stratRows += '<tr><td>Ordinary Income Offset (' + (parseFloat(inputs.oil_gas_rate || 0.95) * 100).toFixed(0) + '%)</td><td>' + formatCurrency(a.oilGasOffset) + '</td></tr>';
@@ -1402,7 +1560,14 @@ function displayResults(result, baseline, inputs) {
   }
   var brooklynFeeAmount = (stratAlloc && stratAlloc.brooklynFee) ? stratAlloc.brooklynFee : 0;
     var brooklynFeeRatePct = (stratAlloc && stratAlloc.brooklynFeeRate) ? (stratAlloc.brooklynFeeRate * 100).toFixed(2) + '%' : '0.00%';
-  var strategyFeesTotal = delphiFeeAmount + brooklynFeeAmount;
+  // Helix management fee
+    var helixFeeRate = 0;
+    var helixFeeAmount = 0;
+    if (stratAlloc && (stratAlloc.helixInvestment || 0) > 0) {
+      helixFeeRate = 0.0285;
+      helixFeeAmount = stratAlloc.helixInvestment * helixFeeRate;
+    }
+    var strategyFeesTotal = delphiFeeAmount + brooklynFeeAmount + helixFeeAmount;
   totalFees = totalFees + strategyFeesTotal;
   var netSavings = result.savings - totalFees;
   var roiPct = totalFees > 0 ? (netSavings / totalFees * 100).toFixed(1) : (result.savings > 0 ? '\u221e' : '0');
@@ -1421,6 +1586,7 @@ function displayResults(result, baseline, inputs) {
     '<tr class="strategy-header"><td colspan="2">Strategy Fees</td></tr>' +
     '<tr><td>Brooklyn Strategy Fee</td><td>' + formatCurrency(brooklynFeeAmount) + (brooklynFeeAmount > 0 ? ' (' + brooklynFeeRatePct + ')' : '') + '</td></tr>' +
     '<tr><td>Delphi Management Fee</td><td>' + formatCurrency(delphiFeeAmount) + (delphiFeeRate > 0 ? ' (' + (delphiFeeRate * 100) + '%)' : '') + '</td></tr>' +
+    '<tr><td>Helix Management Fee</td><td>' + formatCurrency(helixFeeAmount) + (helixFeeRate > 0 ? ' (' + (helixFeeRate * 100).toFixed(2) + '%)' : '') + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="savings-row"><td>Net Savings After Fees</td><td>' + formatCurrency(netSavings) + '</td></tr>' +
@@ -1476,11 +1642,24 @@ function displayResults(result, baseline, inputs) {
     });
   }
   
-  if (strategies.length > 0) {
+  if (alloc && (alloc.helixInvestment || 0) > 0) {
+      var hFund = (typeof HELIX_STRATEGIES !== 'undefined' && alloc.helixClass) ? HELIX_STRATEGIES[alloc.helixClass] : null;
+      strategies.push({
+        id: 'helix',
+        name: 'Helix Strategy',
+        detail: (hFund ? hFund.name : alloc.helixClass) + ' | Investment: ' + formatCurrency(alloc.helixInvestment),
+        investment: alloc.helixInvestment,
+        losses: 0,
+        active: _strategyToggles.helix
+      });
+    }
+
+    if (strategies.length > 0) {
     var fullOptTax = result.optimizedTax;
     var activeLosses = _strategyToggles.brooklyn ? (result.totalLosses || 0) : 0;
     var activeOG = _strategyToggles.oilgas ? (result.totalOilGasOffset || 0) : 0;
     var activeDelphi = _strategyToggles.delphi ? (result.totalDelphiAlloc || null) : null;
+      var activeHelix = _strategyToggles.helix ? (result.totalHelixAlloc || null) : null;
     strategies.forEach(function(s) {
       if (!s.active) {
         var testLosses = activeLosses;
@@ -1489,7 +1668,9 @@ function displayResults(result, baseline, inputs) {
         if (s.id === 'brooklyn') testLosses = (_lastAllocation && _lastAllocation.losses) ? _lastAllocation.losses : 0;
         if (s.id === 'oilgas') testOG = (_lastAllocation && _lastAllocation.oilGasOffset) ? _lastAllocation.oilGasOffset : 0;
         if (s.id === 'delphi') testDelphi = (_lastAllocation && _lastAllocation.delphiAllocation) ? _lastAllocation.delphiAllocation : null;
-        var taxWith = computeTaxAfterStrategies(inputs, testLosses, testOG, testDelphi);
+        var testHelix = activeHelix;
+        if (s.id === 'helix') testHelix = (_lastAllocation && _lastAllocation.helixAllocation) ? _lastAllocation.helixAllocation : null;
+        var taxWith = computeTaxAfterStrategies(inputs, testLosses, testOG, testDelphi, testHelix);
         s.savings = fullOptTax - taxWith.tax;
       } else {
         var testLosses = activeLosses;
@@ -1498,7 +1679,9 @@ function displayResults(result, baseline, inputs) {
         if (s.id === 'brooklyn') testLosses = 0;
         if (s.id === 'oilgas') testOG = 0;
         if (s.id === 'delphi') testDelphi = null;
-        var taxWithout = computeTaxAfterStrategies(inputs, testLosses, testOG, testDelphi);
+        var testHelix = activeHelix;
+        if (s.id === 'helix') testHelix = null;
+        var taxWithout = computeTaxAfterStrategies(inputs, testLosses, testOG, testDelphi, testHelix);
         s.savings = taxWithout.tax - fullOptTax;
       }
     });
@@ -1547,6 +1730,7 @@ function recalculateWithToggles() {
   var totalLosses = 0;
   var totalOG = 0;
   var totalDelphi = null;
+  var totalHelix = null;
   
   if (_strategyToggles.brooklyn && alloc.losses) {
     totalLosses = alloc.losses;
@@ -1557,8 +1741,11 @@ function recalculateWithToggles() {
   if (_strategyToggles.delphi && alloc.delphiAllocation) {
     totalDelphi = alloc.delphiAllocation;
   }
+  if (_strategyToggles.helix && alloc.helixAllocation) {
+    totalHelix = alloc.helixAllocation;
+  }
   
-  var newAfter = computeTaxAfterStrategies(_lastInputs, totalLosses, totalOG, totalDelphi);
+  var newAfter = computeTaxAfterStrategies(_lastInputs, totalLosses, totalOG, totalDelphi, totalHelix);
   
   var modResult = {};
   for (var k in _lastResult) {
@@ -1573,6 +1760,10 @@ function recalculateWithToggles() {
     if (!_strategyToggles.delphi) {
       modAlloc.delphiInvestment = 0;
       modAlloc.delphiAllocation = 0;
+    }
+    if (!_strategyToggles.helix) {
+      modAlloc.helixInvestment = 0;
+      modAlloc.helixAllocation = 0;
     }
     if (!_strategyToggles.brooklyn) {
       modAlloc.investment = 0;
@@ -1650,7 +1841,8 @@ function exportResults() {
   rp += 'STRATEGY FEES\n' +
     '  Brooklyn Strategy Fee: ' + formatCurrency(exportBrooklynFee) + (exportBrooklynFeeRate ? ' (' + (exportBrooklynFeeRate * 100).toFixed(2) + '%)' : '') + '\n' +
     '  Delphi Management Fee: ' + (result.allocation && result.allocation[0] && result.allocation[0].delphiAllocation ? formatCurrency(result.allocation[0].delphiAllocation.managementFee || 0) : '$0') + '\n' +
-    '  Total Strategy Fees: ' + formatCurrency(exportBrooklynFee + (result.allocation && result.allocation[0] && result.allocation[0].delphiAllocation ? (result.allocation[0].delphiAllocation.managementFee || 0) : 0)) + '\n\n  STRATEGIES APPLIED\n';
+    '  Helix Management Fee: ' + (result.allocation && result.allocation[0] && result.allocation[0].helixAllocation ? formatCurrency(result.allocation[0].helixAllocation.managementFee || 0) : '$0') + '\n' +
+    '  Total Strategy Fees: ' + formatCurrency(exportBrooklynFee + (result.allocation && result.allocation[0] && result.allocation[0].delphiAllocation ? (result.allocation[0].delphiAllocation.managementFee || 0) : 0) + (result.allocation && result.allocation[0] && result.allocation[0].helixAllocation ? (result.allocation[0].helixAllocation.managementFee || 0) : 0)) + '\n\n  STRATEGIES APPLIED\n';
   rp += '------------------\n';
   result.allocation.forEach(function(alloc) {
     if (alloc.key) {
@@ -1664,6 +1856,11 @@ function exportResults() {
       var df = DELPHI_STRATEGIES[alloc.delphiClass];
       rp += '  Delphi: ' + (df ? df.name : alloc.delphiClass) + '\n';
       rp += '    Investment: ' + formatCurrency(alloc.delphiInvestment) + '\n';
+    }
+    if ((alloc.helixInvestment || 0) > 0) {
+      var hf = HELIX_STRATEGIES[alloc.helixClass];
+      rp += '  Helix: ' + (hf ? hf.name : alloc.helixClass) + '\n';
+      rp += '    Investment: ' + formatCurrency(alloc.helixInvestment) + '\n';
     }
     if (alloc.oilGasInvestment > 0) {
       rp += '  Oil & Gas Investment: ' + formatCurrency(alloc.oilGasInvestment) + '\n';
