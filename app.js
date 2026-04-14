@@ -1679,7 +1679,7 @@ function displayResults(result, baseline, inputs) {
       });
     }
 
-    if (strategies.length > 0) {
+    { // Always show strategy breakdown with toggles
     var fullOptTax = result.pureTax !== undefined ? result.pureTax : result.optimizedTax;
     
     // Always show all 4 strategy types so user can toggle them back on
