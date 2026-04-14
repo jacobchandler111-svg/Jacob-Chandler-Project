@@ -510,9 +510,6 @@ function computeBaselineTax(inputs) {
   if (totalIncome > niitThreshold) {
     federalTax += Math.min(div + ltg + stg + rent, totalIncome - niitThreshold) * 0.038;
   }
-  // Apply foreign tax credit from Delphi/Helix
-  var foreignTaxCredit = (delphiAlloc ? Math.abs(delphiAlloc.foreignTaxesPaid || 0) : 0) + (helixAlloc ? Math.abs(helixAlloc.foreignTaxesPaid || 0) : 0);
-  federalTax = Math.max(0, federalTax - foreignTaxCredit);
   let stateTax = calculateStateTax(ordinaryIncome + ltg, stateCode, year, f);
   stateTax += calculateWaCapGainsTax(ltg, stateCode, year);
   const roundedFed = Math.round(federalTax);
@@ -581,6 +578,9 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
   if (niitIncome > niitThreshold) {
     federalTax += Math.min(div + Math.max(0, adjLtg) + adjStg + rent, niitIncome - niitThreshold) * 0.038;
   }
+  // Apply foreign tax credit from Delphi/Helix (dollar-for-dollar reduction of federal tax)
+  var foreignTaxCredit = (delphiAlloc ? Math.abs(delphiAlloc.foreignTaxesPaid || 0) : 0) + (helixAlloc ? Math.abs(helixAlloc.foreignTaxesPaid || 0) : 0);
+  federalTax = Math.max(0, federalTax - foreignTaxCredit);
   let stateTax = calculateStateTax(ordinaryIncome + Math.max(0, adjLtg), stateCode, year, f);
   stateTax += calculateWaCapGainsTax(Math.max(0, adjLtg), stateCode, year);
   const roundedFed2 = Math.round(federalTax);
