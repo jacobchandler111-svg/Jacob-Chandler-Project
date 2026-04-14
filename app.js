@@ -624,6 +624,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   disabledMap = disabledMap || {};
   const baseline = computeBaselineTax(inputs);
   let bestTax = baseline.tax;
+  let bestPureTax = baseline.tax;
   let bestTotalCost = baseline.tax; // total bill: tax + all strategy fees
   let bestAllocation = [];
   let bestLosses = 0;
@@ -673,7 +674,8 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
       var totalCost = result.tax + brooklynFee + delphiFee + helixFee;
       if (totalCost < bestTotalCost) {
         bestTotalCost = totalCost;
-        bestTax = result.tax + brooklynFee; // pure tax + Brooklyn fee (for display)
+        bestTax = totalCost; // total bill: tax + all strategy fees
+        bestPureTax = result.tax; // pure tax without fees (for per-strategy comparison)
         if (!bestAllocation.length) bestAllocation.push({});
         bestAllocation[0] = {
           key: brooklynKey, leverage: lev, investment: brooklynInvest,
@@ -880,7 +882,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     baselineTax: baseline.tax,
     baselineFederalTax: baseline.federalTax,
     baselineStateTax: baseline.stateTax,
-    optimizedTax: bestTax,
+    optimizedTax: bestTax, pureTax: bestPureTax,
     savings: baseline.tax - bestTax,
     allocation: bestAllocation,
     totalLosses: bestLosses,
@@ -890,7 +892,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
-    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== "undefined" && inputs.implementation_date) || new Date().toISOString().split("T")[0]; var f = computeBrookhavenFees(implDate); var stratFees = 0; if (bestAllocation.length > 0) { var ba = bestAllocation[0]; stratFees += ba.brooklynFee || 0; if (ba.delphiAllocation) stratFees += ba.delphiAllocation.managementFee || 0; if (ba.helixAllocation) stratFees += ba.helixAllocation.managementFee || 0; } var totalFees = f.totalFee + stratFees; var netSav = grossSav - totalFees; return totalFees > 0 ? (netSav / totalFees * 100).toFixed(1) + "%" : (grossSav > 0 ? "\u221e" : "0"); })()
+    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== "undefined" && inputs.implementation_date) || new Date().toISOString().split("T")[0]; var f = computeBrookhavenFees(implDate); var stratFees = 0; if (bestAllocation.length > 0) { var ba = bestAllocation[0]; stratFees += ba.brooklynFee || 0; if (ba.delphiAllocation) stratFees += ba.delphiAllocation.managementFee || 0; if (ba.helixAllocation) stratFees += ba.helixAllocation.managementFee || 0; } var totalFees = f.totalFee + stratFees; var netSav = grossSav - (totalFees - stratFees); return totalFees > 0 ? (netSav / totalFees * 100).toFixed(1) + "%" : (grossSav > 0 ? "\u221e" : "0"); })()
   };
 }
 
@@ -1592,7 +1594,7 @@ function displayResults(result, baseline, inputs) {
     }
     var strategyFeesTotal = delphiFeeAmount + brooklynFeeAmount + helixFeeAmount;
   totalFees = totalFees + strategyFeesTotal;
-  var netSavings = result.savings - totalFees;
+  var netSavings = result.savings - (totalFees - strategyFeesTotal);
   var roiPct = totalFees > 0 ? (netSavings / totalFees * 100).toFixed(1) : (result.savings > 0 ? '\u221e' : '0');
 
   t3.innerHTML = '<h3 class="table-title summary-title">Return on Planning</h3>' +
@@ -1678,7 +1680,7 @@ function displayResults(result, baseline, inputs) {
     }
 
     if (strategies.length > 0) {
-    var fullOptTax = result.optimizedTax;
+    var fullOptTax = result.pureTax !== undefined ? result.pureTax : result.optimizedTax;
     
     // Always show all 4 strategy types so user can toggle them back on
     var stratIds = strategies.map(function(s) { return s.id; });
@@ -1796,6 +1798,7 @@ function recalculateWithToggles() {
     var baseResult = {};
     for (var k in _lastResult) baseResult[k] = _lastResult[k];
     baseResult.optimizedTax = _lastBaseline.tax;
+      baseResult.pureTax = _lastBaseline.tax;
     baseResult.savings = 0;
     baseResult.allocation = [];
     baseResult.totalLosses = 0;
