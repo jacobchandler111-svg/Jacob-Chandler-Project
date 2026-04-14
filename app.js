@@ -7,6 +7,20 @@
 // SECTION 1: BROOKLYN STRATEGY DATA & REGRESSION ENGINE
 // ============================================================
 
+// BROOKLYN FEE REGRESSION ANALYSIS (19 data points across 4 segments)
+//
+// Key findings:
+// - Beta1 and Advisor Managed share identical fee structures
+// - Fees are driven by leverage structure, not loss rate
+// - Per-segment models (fee vs gross notional):
+//     Beta 1:     fee = -0.00525 + 0.0000682 * GN  (R² = 0.9994)
+//     Beta 0:     fee = -0.00920 + 0.0000660 * GN  (R² = 1.0000)
+//     Beta 0.5:   fee = -0.00771 + 0.0000681 * GN  (R² = 0.9998)
+//     Advisor:    identical to Beta 1
+// - Universal approximation: ~0.67 bps per 1% gross notional
+// - Marginal fee per 1% short position: ~1.34 bps (consistent across all segments)
+// - Fee drag as % of gross loss: 1.6% - 3.3% (higher leverage = slightly more drag)
+// - Fees are highly linear - linear interpolation between presets is accurate
 const BROOKLYN_STRATEGIES = {
   beta1: {
     id: 'brooklyn_beta1',
@@ -15,12 +29,12 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: false,
     beta: 1,
     dataPoints: [
-      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only', minInvestment: 250000 },
-      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.248, label: '130/30', minInvestment: 500000 },
-      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.322, label: '145/45', minInvestment: 500000 },
-      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.590, label: '200/100', minInvestment: 1000000 },
-      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.855, label: '250/150', minInvestment: 1000000 },
-      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.224, label: '325/225', minInvestment: 1000000 }
+      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, feeRate: 0.0017, label: 'Long-Only', minInvestment: 250000 },
+      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.248, feeRate: 0.0058, label: '130/30', minInvestment: 500000 },
+      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.322, feeRate: 0.0077, label: '145/45', minInvestment: 500000 },
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.590, feeRate: 0.0150, label: '200/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.855, feeRate: 0.0216, label: '250/150', minInvestment: 1000000 },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.224, feeRate: 0.0326, label: '325/225', minInvestment: 1000000 }
     ],
     presets: ['Long-Only','130/30','145/45','200/100','250/150','325/225'],
     minInvestment: 250000,
@@ -33,10 +47,10 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: false,
     beta: 0,
     dataPoints: [
-      { leverage: 1.00, longPct: 100, shortPct: 100, lossRate: 0.495, label: '100/100', minInvestment: 1000000 },
-      { leverage: 1.50, longPct: 150, shortPct: 150, lossRate: 0.758, label: '150/150', minInvestment: 1000000 },
-      { leverage: 2.00, longPct: 200, shortPct: 200, lossRate: 1.011, label: '200/200', minInvestment: 1000000 },
-      { leverage: 2.75, longPct: 275, shortPct: 275, lossRate: 1.427, label: '275/275', minInvestment: 1000000 }
+      { leverage: 1.00, longPct: 100, shortPct: 100, lossRate: 0.495, feeRate: 0.0040, label: '100/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 150, shortPct: 150, lossRate: 0.758, feeRate: 0.0106, label: '150/150', minInvestment: 1000000 },
+      { leverage: 2.00, longPct: 200, shortPct: 200, lossRate: 1.011, feeRate: 0.0172, label: '200/200', minInvestment: 1000000 },
+      { leverage: 2.75, longPct: 275, shortPct: 275, lossRate: 1.427, feeRate: 0.0271, label: '275/275', minInvestment: 1000000 }
     ],
     presets: ['100/100','150/150','200/200','275/275'],
     minInvestment: 1000000,
@@ -49,9 +63,9 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: false,
     beta: 0.5,
     dataPoints: [
-      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.674, label: '200/100', minInvestment: 1000000 },
-      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.933, label: '250/150', minInvestment: 1000000 },
-      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.3255, label: '325/225', minInvestment: 1000000 }
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.674, feeRate: 0.0128, label: '200/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.933, feeRate: 0.0194, label: '250/150', minInvestment: 1000000 },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.3255, feeRate: 0.0298, label: '325/225', minInvestment: 1000000 }
     ],
     presets: ['200/100','250/150','325/225'],
     minInvestment: 1000000,
@@ -64,12 +78,12 @@ const BROOKLYN_STRATEGIES = {
     advisorManaged: true,
     beta: null,
     dataPoints: [
-      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, label: 'Long-Only', minInvestment: 250000 },
-      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.144, label: '130/30', minInvestment: 500000 },
-      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.218, label: '145/45', minInvestment: 500000 },
-      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.486, label: '200/100', minInvestment: 1000000 },
-      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.751, label: '250/150', minInvestment: 1000000 },
-      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.120, label: '325/225', minInvestment: 1000000 }
+      { leverage: 0, longPct: 100, shortPct: 0, lossRate: 0.104, feeRate: 0.0017, label: 'Long-Only', minInvestment: 250000 },
+      { leverage: 0.30, longPct: 130, shortPct: 30, lossRate: 0.144, feeRate: 0.0058, label: '130/30', minInvestment: 500000 },
+      { leverage: 0.45, longPct: 145, shortPct: 45, lossRate: 0.218, feeRate: 0.0077, label: '145/45', minInvestment: 500000 },
+      { leverage: 1.00, longPct: 200, shortPct: 100, lossRate: 0.486, feeRate: 0.0150, label: '200/100', minInvestment: 1000000 },
+      { leverage: 1.50, longPct: 250, shortPct: 150, lossRate: 0.751, feeRate: 0.0216, label: '250/150', minInvestment: 1000000 },
+      { leverage: 2.25, longPct: 325, shortPct: 225, lossRate: 1.120, feeRate: 0.0326, label: '325/225', minInvestment: 1000000 }
     ],
     presets: ['Long-Only','130/30','145/45','200/100','250/150','325/225'],
     minInvestment: 250000,
@@ -111,13 +125,20 @@ const DELPHI_STRATEGIES = {
   }
 };
 
+function parseLocalDate(dateStr) {
+  // Parse YYYY-MM-DD as local time to avoid UTC timezone offset issues
+  if (!dateStr) return new Date();
+  const parts = String(dateStr).split(/[-/T]/);
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]) || 1);
+}
+
 function computeDelphiAllocation(classKey, investmentAmount, investmentDate) {
   const fund = DELPHI_STRATEGIES[classKey];
   if (!fund) return null;
   const alloc = fund.allocations;
   let fraction = 1;
   if (investmentDate) {
-    const now = new Date(investmentDate);
+    const now = parseLocalDate(investmentDate);
     const yearEnd = new Date(now.getFullYear(), 11, 31);
     const yearStart = new Date(now.getFullYear(), 0, 1);
     const msInYear = yearEnd - yearStart;
@@ -145,27 +166,40 @@ function getDelphiMinInvestment(classKey) {
   return fund ? fund.minInvestment : 0;
 }
 
-function interpolateLossRate(strategyKey, leverage) {
+function interpolateBrooklyn(strategyKey, leverage) {
   const strat = BROOKLYN_STRATEGIES[strategyKey];
-  if (!strat) return 0;
+  if (!strat) return { lossRate: 0, feeRate: 0 };
   const pts = strat.dataPoints;
-  if (pts.length === 0) return 0;
-  if (leverage <= pts[0].leverage) return pts[0].lossRate;
-  if (leverage >= pts[pts.length - 1].leverage) return pts[pts.length - 1].lossRate;
-  for (let i = 0; i < pts.length - 1; i++) {
-    if (leverage >= pts[i].leverage && leverage <= pts[i + 1].leverage) {
-      const t = (leverage - pts[i].leverage) / (pts[i + 1].leverage - pts[i].leverage);
-      return pts[i].lossRate + t * (pts[i + 1].lossRate - pts[i].lossRate);
+  if (!pts.length) return { lossRate: 0, feeRate: 0 };
+  if (leverage <= pts[0].leverage) return { lossRate: pts[0].lossRate, feeRate: pts[0].feeRate || 0 };
+  if (leverage >= pts[pts.length - 1].leverage) return { lossRate: pts[pts.length - 1].lossRate, feeRate: pts[pts.length - 1].feeRate || 0 };
+  for (let i = 1; i < pts.length; i++) {
+    if (leverage <= pts[i].leverage) {
+      const t = (leverage - pts[i - 1].leverage) / (pts[i].leverage - pts[i - 1].leverage);
+      return {
+        lossRate: pts[i - 1].lossRate + t * (pts[i].lossRate - pts[i - 1].lossRate),
+        feeRate: (pts[i - 1].feeRate || 0) + t * ((pts[i].feeRate || 0) - (pts[i - 1].feeRate || 0))
+      };
     }
   }
-  return pts[pts.length - 1].lossRate;
+  return { lossRate: pts[pts.length - 1].lossRate, feeRate: pts[pts.length - 1].feeRate || 0 };
+}
+
+function interpolateLossRate(strategyKey, leverage) {
+  return interpolateBrooklyn(strategyKey, leverage).lossRate;
 }
 
 function timeWeightedLoss(annualLossRate, implementationDate) {
-  const implDate = new Date(implementationDate);
-  const yearEnd = new Date(implDate.getFullYear(), 11, 31);
-  if (implDate > yearEnd) return 0;
-  const msInYear = 365.25 * 24 * 60 * 60 * 1000;
+  // Parse date parts to avoid UTC vs local timezone issues
+  const parts = implementationDate.split('-');
+  const year = parseInt(parts[0]);
+  const month = parseInt(parts[1]) - 1;
+  const day = parseInt(parts[2]);
+  const implDate = new Date(year, month, day);
+  const yearEnd = new Date(year, 11, 31);
+  if (implDate >= yearEnd) return 0;
+  const yearStart = new Date(year, 0, 1);
+  const msInYear = yearEnd - yearStart;
   const remaining = Math.max(0, yearEnd - implDate);
   const fraction = Math.min(1, remaining / msInYear);
   return annualLossRate * fraction;
@@ -248,6 +282,13 @@ async function loadTaxBrackets() {
         TAX_DATA = await r.json();
         convertSentinelsToInfinity(TAX_DATA);
         console.log('Tax brackets loaded for years:', Object.keys(TAX_DATA.federal));
+      // Fix 2026 standard deductions to align with STRATEGY_LIMITS values
+      if (TAX_DATA.federal && TAX_DATA.federal['2026'] && TAX_DATA.federal['2026'].standardDeduction) {
+        TAX_DATA.federal['2026'].standardDeduction.single = 15350;
+        TAX_DATA.federal['2026'].standardDeduction.married_joint = 30700;
+        TAX_DATA.federal['2026'].standardDeduction.married_separate = 15350;
+        TAX_DATA.federal['2026'].standardDeduction.head_household = 23050;
+      }
         console.log('State tax data loaded for years:', Object.keys(TAX_DATA.state));
         return;
       }
@@ -532,32 +573,36 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
 
   // Helper to try a combination and track the best
   function tryCombo(brooklynKey, brooklynInvest, lev, ogInvest, delphiClass, delphiInvest) {
-    var totalUsed = brooklynInvest + ogInvest + delphiInvest;
-    if (totalUsed > availableCapital + 1) return; // tolerance
-
-    var losses = brooklynInvest > 0 && brooklynKey ? computeBrooklynLoss(brooklynKey, lev, brooklynInvest, implementationDate) : 0;
-    var ogOffset = ogInvest * ogRate;
-    var dAlloc = delphiInvest > 0 && delphiClass ? computeDelphiAllocation(delphiClass, delphiInvest, implementationDate) : null;
-
-    var result = computeTaxAfterStrategies(inputs, losses, ogOffset, dAlloc);
-    if (result.tax < bestTax || (result.tax === bestTax && lev < (bestAllocation.length > 0 ? bestAllocation[0].leverage : 999))) {
-      bestTax = result.tax;
-      bestAllocation = [{
-        key: brooklynKey,
-        leverage: lev,
-        investment: brooklynInvest,
-        losses: losses,
-        oilGasInvestment: ogInvest,
-        oilGasOffset: ogOffset,
-        delphiClass: delphiClass,
-        delphiInvestment: delphiInvest,
-        delphiAllocation: dAlloc
-      }];
-      bestLosses = losses;
-      bestOilGasOffset = ogOffset;
-      bestDelphiAlloc = dAlloc;
+      var totalUsed = brooklynInvest + ogInvest + delphiInvest;
+      if (totalUsed > availableCapital * 1.001) return; // tolerance
+      var losses = (brooklynInvest && brooklynKey) ? computeBrooklynLoss(brooklynKey, lev, brooklynInvest, implementationDate) : 0;
+      var ogOffset = ogInvest * ogRate;
+      var dAlloc = (delphiInvest && delphiClass) ? computeDelphiAllocation(delphiClass, delphiInvest, implementationDate) : null;
+      var result = computeTaxAfterStrategies(inputs, losses, ogOffset, dAlloc);
+      // Compute Brooklyn strategy fee using interpolated feeRate
+      var brooklynFeeRate = 0;
+      var brooklynFee = 0;
+      if (brooklynInvest && brooklynKey) {
+        var interp = interpolateBrooklyn(brooklynKey, lev);
+        brooklynFeeRate = interp.feeRate;
+        brooklynFee = brooklynInvest * brooklynFeeRate;
+      }
+      // Compare total cost: tax + Brooklyn fee (Delphi fee is already embedded in allocation)
+      var totalCost = result.tax + brooklynFee;
+      if (totalCost < bestTax) {
+        bestTax = totalCost;
+        if (!bestAllocation.length) bestAllocation.push({});
+        bestAllocation[0] = {
+          key: brooklynKey, leverage: lev, investment: brooklynInvest,
+          losses: losses, brooklynFeeRate: brooklynFeeRate, brooklynFee: brooklynFee,
+          oilGasInvestment: ogInvest, oilGasOffset: ogOffset,
+          delphiClass: delphiClass, delphiInvestment: delphiInvest, delphiAllocation: dAlloc
+        };
+        bestLosses = losses;
+        bestOilGasOffset = ogOffset;
+        bestDelphiAlloc = dAlloc;
+      }
     }
-  }
 
   // Iterate Brooklyn strategies
   for (var si = 0; si < strategies.length; si++) {
@@ -1355,7 +1400,8 @@ function displayResults(result, baseline, inputs) {
     delphiFeeRate = (stratAlloc.delphiClass === 'A') ? 0.0175 : 0.02;
     delphiFeeAmount = stratAlloc.delphiInvestment * delphiFeeRate;
   }
-  var brooklynFeeAmount = 0;
+  var brooklynFeeAmount = (stratAlloc && stratAlloc.brooklynFee) ? stratAlloc.brooklynFee : 0;
+    var brooklynFeeRatePct = (stratAlloc && stratAlloc.brooklynFeeRate) ? (stratAlloc.brooklynFeeRate * 100).toFixed(2) + '%' : '0.00%';
   var strategyFeesTotal = delphiFeeAmount + brooklynFeeAmount;
   totalFees = totalFees + strategyFeesTotal;
   var netSavings = result.savings - totalFees;
@@ -1373,7 +1419,7 @@ function displayResults(result, baseline, inputs) {
     '<tr class="total-row"><td>Total Fees</td><td>' + formatCurrency(totalFees) + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="strategy-header"><td colspan="2">Strategy Fees</td></tr>' +
-    '<tr><td>Brooklyn Strategy Fee</td><td>' + formatCurrency(brooklynFeeAmount) + '</td></tr>' +
+    '<tr><td>Brooklyn Strategy Fee</td><td>' + formatCurrency(brooklynFeeAmount) + (brooklynFeeAmount > 0 ? ' (' + brooklynFeeRatePct + ')' : '') + '</td></tr>' +
     '<tr><td>Delphi Management Fee</td><td>' + formatCurrency(delphiFeeAmount) + (delphiFeeRate > 0 ? ' (' + (delphiFeeRate * 100) + '%)' : '') + '</td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
     '<tr class="spacer-row"><td colspan="2"></td></tr>' +
@@ -1530,7 +1576,7 @@ function recalculateWithToggles() {
     }
     if (!_strategyToggles.brooklyn) {
       modAlloc.investment = 0;
-      modAlloc.losses = 0;
+      modAlloc.losses = 0; modAlloc.brooklynFee = 0; modAlloc.brooklynFeeRate = 0;
     }
     modResult.allocation = [modAlloc];
   }
@@ -1572,6 +1618,12 @@ function exportResults() {
   var enabledStrategies = [{ key: stratKey, maxInvestment: availCap, customLeverage: leverage }];
   var result = solveOptimalAllocation(inp, enabledStrategies, availCap, leverage, implDate);
   var fees = computeBrookhavenFees(implDate);
+    var exportBrooklynFee = 0;
+    var exportBrooklynFeeRate = 0;
+    if (result.allocation && result.allocation.length && result.allocation[0].brooklynFee) {
+      exportBrooklynFee = result.allocation[0].brooklynFee;
+      exportBrooklynFeeRate = result.allocation[0].brooklynFeeRate;
+    }
   var year = result.year || getSelectedTaxYear();
   var state = result.state || getSelectedState();
   var rp = 'BROOKHAVEN TAX STRATEGY REPORT\n';
@@ -1595,7 +1647,10 @@ function exportResults() {
   rp += 'Flat Fee: ' + formatCurrency(fees.flatFee) + '\n';
   rp += 'Quarterly (pro-rata): ' + formatCurrency(fees.quarterlyFee) + '\n';
   rp += 'Total Fees: ' + formatCurrency(fees.totalFee) + '\n\n';
-  rp += 'STRATEGIES APPLIED\n';
+  rp += 'STRATEGY FEES\n' +
+    '  Brooklyn Strategy Fee: ' + formatCurrency(exportBrooklynFee) + (exportBrooklynFeeRate ? ' (' + (exportBrooklynFeeRate * 100).toFixed(2) + '%)' : '') + '\n' +
+    '  Delphi Management Fee: ' + (result.allocation && result.allocation[0] && result.allocation[0].delphiAllocation ? formatCurrency(result.allocation[0].delphiAllocation.managementFee || 0) : '$0') + '\n' +
+    '  Total Strategy Fees: ' + formatCurrency(exportBrooklynFee + (result.allocation && result.allocation[0] && result.allocation[0].delphiAllocation ? (result.allocation[0].delphiAllocation.managementFee || 0) : 0)) + '\n\n  STRATEGIES APPLIED\n';
   rp += '------------------\n';
   result.allocation.forEach(function(alloc) {
     if (alloc.key) {
