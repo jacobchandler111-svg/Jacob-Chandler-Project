@@ -618,6 +618,7 @@ function computeBrookhavenFees(implementationDate) {
 function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, maxLeverage, implementationDate) {
   const baseline = computeBaselineTax(inputs);
   let bestTax = baseline.tax;
+  let bestTotalCost = baseline.tax; // total bill: tax + all strategy fees
   let bestAllocation = [];
   let bestLosses = 0;
   let bestOilGasOffset = 0;
@@ -660,10 +661,13 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
         brooklynFeeRate = interp.feeRate;
         brooklynFee = brooklynInvest * brooklynFeeRate;
       }
-      // Compare total cost: tax + Brooklyn fee (Delphi fee is already embedded in allocation)
-      var totalCost = result.tax + brooklynFee;
-      if (totalCost < bestTax) {
-        bestTax = totalCost;
+      // Compare total bill: tax + ALL strategy fees (Brooklyn + Delphi + Helix)
+      var delphiFee = dAlloc ? dAlloc.managementFee : 0;
+      var helixFee = hAlloc ? hAlloc.managementFee : 0;
+      var totalCost = result.tax + brooklynFee + delphiFee + helixFee;
+      if (totalCost < bestTotalCost) {
+        bestTotalCost = totalCost;
+        bestTax = result.tax + brooklynFee; // pure tax + Brooklyn fee (for display)
         if (!bestAllocation.length) bestAllocation.push({});
         bestAllocation[0] = {
           key: brooklynKey, leverage: lev, investment: brooklynInvest,
