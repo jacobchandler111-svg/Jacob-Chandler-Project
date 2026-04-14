@@ -1797,6 +1797,13 @@ function showPage(pageId) {
   if (pageId === 'page2') {
     syncPage2Visibility();
     setupPage2CurrencyInputs();
+    // Auto-populate Max Sector Investment from Strategy Selector
+    var sectorVal = document.getElementById('inline-sector_allocation');
+    var ogMaxEl = document.getElementById('oil_gas_max');
+    if (sectorVal && ogMaxEl && sectorVal.value && !ogMaxEl.value) {
+      ogMaxEl.value = sectorVal.value;
+      ogMaxEl.dispatchEvent(new Event('input', {bubbles: true}));
+    }
   }
   if (pageId === 'page3') calculateStrategies();
 }
