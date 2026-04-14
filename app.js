@@ -548,9 +548,9 @@ function computeTaxAfterStrategies(inputs, totalSTLosses, oilGasOffset, delphiAl
     helixOrdinaryOffset = Math.abs(helixAlloc.ordinaryIncomeExpense || 0);
     helixSTLoss = Math.abs(helixAlloc.shortTermCapitalGainLoss || 0);
     helixLTCG = helixAlloc.longTermCapitalGainLoss || 0;
+  }
   var delphiQD = delphiAlloc ? (delphiAlloc.qualifiedDividends || 0) : 0;
   var helixQD = helixAlloc ? (helixAlloc.qualifiedDividends || 0) : 0;
-  }
 
   let remainingLoss = totalSTLosses + delphiSTLoss + helixSTLoss;
   let adjStg = stg;
