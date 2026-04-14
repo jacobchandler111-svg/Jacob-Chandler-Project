@@ -13,9 +13,9 @@
 // - Beta1 and Advisor Managed share identical fee structures
 // - Fees are driven by leverage structure, not loss rate
 // - Per-segment models (fee vs gross notional):
-//     Beta 1:     fee = -0.00525 + 0.0000682 * GN  (R² = 0.9994)
-//     Beta 0:     fee = -0.00920 + 0.0000660 * GN  (R² = 1.0000)
-//     Beta 0.5:   fee = -0.00771 + 0.0000681 * GN  (R² = 0.9998)
+//     Beta 1:     fee = -0.00525 + 0.0000682 * GN  (RÂ² = 0.9994)
+//     Beta 0:     fee = -0.00920 + 0.0000660 * GN  (RÂ² = 1.0000)
+//     Beta 0.5:   fee = -0.00771 + 0.0000681 * GN  (RÂ² = 0.9998)
 //     Advisor:    identical to Beta 1
 // - Universal approximation: ~0.67 bps per 1% gross notional
 // - Marginal fee per 1% short position: ~1.34 bps (consistent across all segments)
@@ -620,7 +620,8 @@ function computeBrookhavenFees(implementationDate) {
   };
 }
 
-function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, maxLeverage, implementationDate) {
+function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, maxLeverage, implementationDate, disabledMap) {
+  disabledMap = disabledMap || {};
   const baseline = computeBaselineTax(inputs);
   let bestTax = baseline.tax;
   let bestTotalCost = baseline.tax; // total bill: tax + all strategy fees
@@ -630,10 +631,10 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   let bestDelphiAlloc = null;
   let bestHelixAlloc = null;
 
-  const ogMaxInvest = parseFloat(inputs.oil_gas_max || 0);
+  const ogMaxInvest = disabledMap.oilgas ? 0 : (parseFloat(inputs.oil_gas_max || 0));
   const ogRate = parseFloat(inputs.oil_gas_rate || 0.95);
 
-  const strategies = enabledStrategies.filter(function(s) {
+  const strategies = disabledMap.brooklyn ? [] : enabledStrategies.filter(function(s) {
     return BROOKLYN_STRATEGIES[s.key] != null;
   });
 
@@ -645,9 +646,9 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
   // Determine eligible Delphi classes
   var delphiClasses = [];
   var helixClasses = [];
-  if (availableCapital >= 5000000) delphiClasses.push('classA');
-  if (availableCapital >= 1000000) delphiClasses.push('classB');
-  if (availableCapital >= 1000000) helixClasses.push('standard');
+  if (!disabledMap.delphi && availableCapital >= 5000000) delphiClasses.push('classA');
+  if (!disabledMap.delphi && availableCapital >= 1000000) delphiClasses.push('classB');
+  if (!disabledMap.helix && availableCapital >= 1000000) helixClasses.push('standard');
 
   // Helper to try a combination and track the best
   function tryCombo(brooklynKey, brooklynInvest, lev, ogInvest, delphiClass, delphiInvest, helixClass, helixInvest) {
@@ -1427,6 +1428,10 @@ var _lastResult = null;
 var _lastBaseline = null;
 var _lastInputs = null;
 var _lastAllocation = null;
+var _lastEnabledStrategies = null;
+var _lastAvailCap = 0;
+var _lastLeverage = 0;
+var _lastImplDate = null;
 var _strategyToggles = { brooklyn: true, oilgas: true, delphi: true, helix: true };
 
 function calculateStrategies() {
@@ -1451,6 +1456,10 @@ function calculateStrategies() {
   _lastBaseline = baseline;
   _lastInputs = inp;
   _lastAllocation = result.allocation && result.allocation.length > 0 ? result.allocation[0] : null;
+    _lastEnabledStrategies = enabledStrategies;
+    _lastAvailCap = availCap;
+    _lastLeverage = leverage;
+    _lastImplDate = implDate;
     if (!_lastResult) _strategyToggles = { brooklyn: true, oilgas: true, delphi: true, helix: true };
   displayResults(result, baseline, inp);
 }
@@ -1670,7 +1679,39 @@ function displayResults(result, baseline, inputs) {
 
     if (strategies.length > 0) {
     var fullOptTax = result.optimizedTax;
-    var activeLosses = _strategyToggles.brooklyn ? (result.totalLosses || 0) : 0;
+    
+    // Always show all 4 strategy types so user can toggle them back on
+    var stratIds = strategies.map(function(s) { return s.id; });
+    if (stratIds.indexOf('brooklyn') === -1) {
+      strategies.push({
+        id: 'brooklyn', name: 'Brooklyn Tax Loss Harvesting',
+        detail: 'Not currently allocated',
+        investment: 0, losses: 0, active: _strategyToggles.brooklyn
+      });
+    }
+    if (stratIds.indexOf('oilgas') === -1) {
+      strategies.push({
+        id: 'oilgas', name: 'Oil & Gas',
+        detail: 'Not currently allocated',
+        investment: 0, losses: 0, active: _strategyToggles.oilgas
+      });
+    }
+    if (stratIds.indexOf('delphi') === -1) {
+      strategies.push({
+        id: 'delphi', name: 'Delphi Strategy',
+        detail: 'Not currently allocated',
+        investment: 0, losses: 0, active: _strategyToggles.delphi
+      });
+    }
+    if (stratIds.indexOf('helix') === -1) {
+      strategies.push({
+        id: 'helix', name: 'Helix Strategy',
+        detail: 'Not currently allocated',
+        investment: 0, losses: 0, active: _strategyToggles.helix
+      });
+    }
+
+var activeLosses = _strategyToggles.brooklyn ? (result.totalLosses || 0) : 0;
     var activeOG = _strategyToggles.oilgas ? (result.totalOilGasOffset || 0) : 0;
     var activeDelphi = _strategyToggles.delphi ? (result.totalDelphiAlloc || null) : null;
       var activeHelix = _strategyToggles.helix ? (result.totalHelixAlloc || null) : null;
@@ -1711,9 +1752,9 @@ function displayResults(result, baseline, inputs) {
         'border-radius:10px;padding:16px;text-align:center;opacity:' + opacity + ';transition:opacity 0.3s;">' +
         '<div style="font-weight:700;font-size:1.05em;color:#90caf9;margin-bottom:6px;">' + s.name + '</div>' +
         '<div style="font-size:0.85em;color:#b0bec5;margin-bottom:10px;">' + s.detail + '</div>' +
-        '<div style="font-size:1.3em;font-weight:700;color:#4fc3f7;margin-bottom:10px;">' + formatCurrency(Math.abs(s.savings)) + (s.active ? ' saved' : ' potential') + '</div>' +
+        '<div style="font-size:1.3em;font-weight:700;color:#4fc3f7;margin-bottom:10px;">' + (s.active ? (formatCurrency(Math.abs(s.savings)) + ' saved') : 'Disabled') + '</div>' +
         '<label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;">' +
-        '<span style="font-size:0.85em;color:#b0bec5;">Include</span>' +
+        '<span style="font-size:0.85em;color:#b0bec5;">Enable</span>' +
         '<input type="checkbox" class="strategy-toggle-checkbox" data-strat="' + s.id + '" ' + toggleChecked + 
         ' style="width:18px;height:18px;accent-color:#42a5f5;cursor:pointer;">' +
         '</label></div>';
@@ -1738,61 +1779,48 @@ function displayResults(result, baseline, inputs) {
 }
 
 function recalculateWithToggles() {
-  if (!_lastResult || !_lastInputs || !_lastAllocation) return;
-  
-  var alloc = _lastAllocation;
-  var totalLosses = 0;
-  var totalOG = 0;
-  var totalDelphi = null;
-  var totalHelix = null;
-  
-  if (_strategyToggles.brooklyn && alloc.losses) {
-    totalLosses = alloc.losses;
+  if (!_lastResult || !_lastInputs || !_lastEnabledStrategies) return;
+
+  // Build disabledMap from toggle state
+  var disabledMap = {
+    brooklyn: !_strategyToggles.brooklyn,
+    oilgas:   !_strategyToggles.oilgas,
+    delphi:   !_strategyToggles.delphi,
+    helix:    !_strategyToggles.helix
+  };
+
+  // Check if ALL strategies are disabled
+  var allDisabled = disabledMap.brooklyn && disabledMap.oilgas && disabledMap.delphi && disabledMap.helix;
+
+  if (allDisabled) {
+    var baseResult = {};
+    for (var k in _lastResult) baseResult[k] = _lastResult[k];
+    baseResult.optimizedTax = _lastBaseline.tax;
+    baseResult.savings = 0;
+    baseResult.allocation = [];
+    baseResult.totalLosses = 0;
+    baseResult.totalOilGasOffset = 0;
+    baseResult.totalDelphiAlloc = null;
+    baseResult.totalHelixAlloc = null;
+    displayResults(baseResult, _lastBaseline, _lastInputs);
+    return;
   }
-  if (_strategyToggles.oilgas && alloc.oilGasOffset) {
-    totalOG = alloc.oilGasOffset;
-  }
-  if (_strategyToggles.delphi && alloc.delphiAllocation) {
-    totalDelphi = alloc.delphiAllocation;
-  }
-  if (_strategyToggles.helix && alloc.helixAllocation) {
-    totalHelix = alloc.helixAllocation;
-  }
-  
-  var newAfter = computeTaxAfterStrategies(_lastInputs, totalLosses, totalOG, totalDelphi, totalHelix);
-  
-  var modResult = {};
-  for (var k in _lastResult) {
-    modResult[k] = _lastResult[k];
-  }
-  
-  // Deep copy allocation and zero out disabled strategy data for fee calculation
-  if (modResult.allocation && modResult.allocation.length > 0) {
-    var origAlloc = modResult.allocation[0];
-    var modAlloc = {};
-    for (var ak in origAlloc) { modAlloc[ak] = origAlloc[ak]; }
-    if (!_strategyToggles.delphi) {
-      modAlloc.delphiInvestment = 0;
-      modAlloc.delphiAllocation = 0;
-    }
-    if (!_strategyToggles.helix) {
-      modAlloc.helixInvestment = 0;
-      modAlloc.helixAllocation = 0;
-    }
-    if (!_strategyToggles.brooklyn) {
-      modAlloc.investment = 0;
-      modAlloc.losses = 0; modAlloc.brooklynFee = 0; modAlloc.brooklynFeeRate = 0;
-    }
-    modResult.allocation = [modAlloc];
-  }
-modResult.optimizedTax = newAfter.tax;
-  modResult.savings = _lastResult.baselineTax - newAfter.tax;
-  
-  var totalFees = computeBrookhavenFees(_lastInputs.implementation_date) || 0;
-  var netSavings = modResult.savings - totalFees;
-  modResult.roi = totalFees > 0 ? (netSavings / totalFees * 100).toFixed(1) : '0.0';
-  
-  displayResults(modResult, _lastBaseline, _lastInputs);
+
+  // Re-run the solver with only enabled strategies
+  var newResult = solveOptimalAllocation(
+    _lastInputs,
+    _lastEnabledStrategies,
+    _lastAvailCap,
+    _lastLeverage,
+    _lastImplDate,
+    disabledMap
+  );
+
+  // Update stored result for subsequent toggles
+  _lastResult = newResult;
+  _lastAllocation = newResult.allocation && newResult.allocation.length > 0 ? newResult.allocation[0] : null;
+
+  displayResults(newResult, _lastBaseline, _lastInputs);
 }
 
 
