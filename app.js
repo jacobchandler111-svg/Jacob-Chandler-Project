@@ -889,7 +889,7 @@ function solveOptimalAllocation(inputs, enabledStrategies, availableCapital, max
     totalIncome: baseline.totalIncome,
     year: baseline.year,
     state: baseline.state,
-    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== "undefined" && inputs.implementation_date) || new Date().toISOString().split("T")[0]; var f = computeBrookhavenFees(implDate); var stratFees = 0; if (bestAllocation.length > 0) { var ba = bestAllocation[0]; stratFees += ba.brooklynFee || 0; if (ba.delphiAllocation) stratFees += ba.delphiAllocation.managementFee || 0; if (ba.helixAllocation) stratFees += ba.helixAllocation.managementFee || 0; } var totalFees = f.totalFee + stratFees; var netSav = grossSav - totalFees; return totalFees > 0 ? (netSav / totalFees * 100).toFixed(1) + "%" : (grossSav > 0 ? "\u221e" : "0"); })()()
+    roi: (function() { var grossSav = baseline.tax - bestTax; var implDate = (typeof inputs !== "undefined" && inputs.implementation_date) || new Date().toISOString().split("T")[0]; var f = computeBrookhavenFees(implDate); var stratFees = 0; if (bestAllocation.length > 0) { var ba = bestAllocation[0]; stratFees += ba.brooklynFee || 0; if (ba.delphiAllocation) stratFees += ba.delphiAllocation.managementFee || 0; if (ba.helixAllocation) stratFees += ba.helixAllocation.managementFee || 0; } var totalFees = f.totalFee + stratFees; var netSav = grossSav - totalFees; return totalFees > 0 ? (netSav / totalFees * 100).toFixed(1) + "%" : (grossSav > 0 ? "\u221e" : "0"); })()
   };
 }
 
