@@ -1023,7 +1023,7 @@ function setupCurrencyInput(input, mapTo) {
                                       var page2Id = q.inputField.mapTo;
                                       if (!_page2ToPage1Map[page2Id]) _page2ToPage1Map[page2Id] = [];
                                       _page2ToPage1Map[page2Id].push({
-                                                    inputId: 'inline_' + q.id,
+                                                    inputId: 'inline-' + q.id,
                                                     answerKey: '_input_' + q.id
                                       });
                           }
