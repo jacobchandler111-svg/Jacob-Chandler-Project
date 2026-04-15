@@ -915,7 +915,7 @@ const questions = {
         {
           id: 'not_w2_business', text: 'Do you own your own business?', trigger: 'has_business',
           showWhen: function(a) { return a.w2_employee === false; },
-          inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Revenue', mapTo: 'biz_revenue' }
+          inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Income', mapTo: 'biz_revenue' }
         },
         {
           id: 'not_w2_retirement', text: 'Do you receive retirement benefits?', trigger: 'retirement_income',
@@ -928,7 +928,7 @@ const questions = {
             { id: 'has_rental', text: 'Do you own rental properties?', trigger: 'rental_property',
               inputField: { type: 'number', placeholder: 'e.g. 50,000', label: 'Annual Rental Income', mapTo: 'rental_income' } },
             { id: 'has_business', text: 'Do you own a business?', trigger: 'has_business',
-              inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Revenue', mapTo: 'biz_revenue' } },
+              inputField: { type: 'number', placeholder: 'e.g. 100,000', label: 'Annual Business Income', mapTo: 'biz_revenue' } },
             { id: 'has_self_employment', text: 'Do you have self-employment income?', trigger: 'self_employed',
               inputField: { type: 'number', placeholder: 'e.g. 75,000', label: 'Annual Self-Employment Income', mapTo: 'se_income' } },
             { id: 'has_retirement_income', text: 'Are you receiving retirement benefits?', trigger: 'retirement_income',
@@ -1011,6 +1011,30 @@ function setupCurrencyInput(input, mapTo) {
   });
 }
 
+  // --- Reverse sync: Page 2 -> Page 1 ---
+  var _page2ToPage1Map = {};
+
+  function buildPage2ToPage1Map() {
+        _page2ToPage1Map = {};
+        function scanQuestions(arr) {
+                if (!arr) return;
+                arr.forEach(function(q) {
+                          if (q.inputField && q.inputField.mapTo) {
+                                      var page2Id = q.inputField.mapTo;
+                                      if (!_page2ToPage1Map[page2Id]) _page2ToPage1Map[page2Id] = [];
+                                      _page2ToPage1Map[page2Id].push({
+                                                    inputId: 'inline_' + q.id,
+                                                    answerKey: '_input_' + q.id
+                                      });
+                          }
+                          if (q.followUp) scanQuestions(q.followUp);
+                });
+        }
+        Object.keys(questions).forEach(function(section) {
+                scanQuestions(questions[section]);
+        });
+  }
+
 function setupPage2CurrencyInputs() {
   var currencyFields = ['w2_wages','se_income','biz_revenue','rental_income',
     'dividend_income','retirement_distributions','st_gains','lt_gains','portfolio_value',
@@ -1018,7 +1042,22 @@ function setupPage2CurrencyInputs() {
     'available_capital','oil_gas_max'];
   currencyFields.forEach(function(id) {
     var el = document.getElementById(id);
-    if (el) { setupCurrencyInput(el, null); }
+      if (el) {
+                setupCurrencyInput(el, null);
+                // Reverse sync: Page 2 -> Page 1
+                el.addEventListener('blur', function() {
+                            var mappings = _page2ToPage1Map[id];
+                            if (mappings) {
+                                          mappings.forEach(function(m) {
+                                                          var page1Input = document.getElementById(m.inputId);
+                                                          if (page1Input) {
+                                                                            page1Input.value = this.value;
+                                                          }
+                                                          userAnswers[m.answerKey] = this.value;
+                                          }.bind(this));
+                            }
+                });
+      }
   });
 }
 
@@ -2169,9 +2208,11 @@ function setupLeverageSlider() {
 
 // --- Initialization ---
 buildQuestions();
+  buildPage2ToPage1Map();
 loadStrategies();
 loadTaxBrackets();
 setupLeverageSlider();
+
 
 
 
