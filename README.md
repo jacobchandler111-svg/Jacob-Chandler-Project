@@ -34,22 +34,74 @@ All calculations run entirely in the browser. No backend server is required once
 ```
 Jacob-Chandler-Project/
 ├── data/
-│   ├── strategies.json      # Tax strategy catalog (triggers, questions, categories)
-│   └── taxBrackets.json     # Federal + state brackets for 2025 and 2026
-├── app.js                   # Core engine (4 sections — see below)
-├── index.html               # Three-page frontend with inline styles
+│   ├── strategies.json                # Tax strategy catalog (triggers, questions, categories)
+│   └── taxBrackets.json               # Federal + state brackets for 2025 and 2026
+├── css/
+│   └── styles.css                     # Extracted styles (currently still inlined in index.html; cutover pending)
+├── js/
+│   ├── 01-brooklyn/                   # Brooklyn portfolio data, regression, fund data, date helpers
+│   │   ├── brooklyn-data.js
+│   │   ├── date-utils.js
+│   │   ├── delphi-helix.js
+│   │   └── brooklyn-regression.js
+│   ├── 02-tax-engine/                 # Federal + state tax calculation pipeline
+│   │   ├── tax-data.js
+│   │   ├── tax-loader.js
+│   │   ├── tax-lookups.js
+│   │   ├── tax-calc-federal.js
+│   │   ├── tax-calc-state.js
+│   │   └── tax-baseline.js
+│   ├── 03-solver/                     # Fee model and iterative savings solver
+│   │   ├── fees.js
+│   │   └── solver.js
+│   ├── 05-strategy-calculators/       # Per-strategy estimators + orchestrator
+│   │   ├── limits.js
+│   │   ├── calc-retirement.js
+│   │   ├── calc-business.js
+│   │   ├── calc-charitable.js
+│   │   ├── calc-credits.js
+│   │   ├── calc-capital-gains.js
+│   │   ├── calc-investment.js
+│   │   ├── calc-entity.js
+│   │   ├── calc-estate.js
+│   │   ├── calc-misc.js
+│   │   └── orchestrator.js
+│   └── 04-ui/                         # Questionnaire, rendering, page controls (loaded last)
+│       ├── questions-data.js
+│       ├── format-helpers.js
+│       ├── questionnaire-builder.js
+│       ├── questionnaire-render.js
+│       ├── answer-state.js
+│       ├── progress-and-brooklyn-ui.js
+│       ├── inputs-collector.js
+│       ├── calculate-and-display.js
+│       └── page-controls.js
+├── app.js                             # Pre-refactor monolith (kept on disk pending deep audit; not loaded by index.html)
+├── index.html                         # Three-page frontend; loads the 32 modular scripts in dependency order
 └── README.md
 ```
 
-### app.js Sections
+### Module Sections
 
-| Section | Description |
-|---------|-------------|
-| **1 — Brooklyn Strategy Data & Regression Engine** | Portfolio constructions, Delphi/Helix fund data, linear interpolation, and time-weighted return calculations. |
-| **2 — Tax Calculation Engine** | Loads `taxBrackets.json`, exposes `getFederalBrackets(year)` and `getStateBrackets(state, year)`, computes baseline and post-strategy federal + state tax. Handles LTCG rates, SE tax, NIIT, and standard/itemized deduction logic. |
-| **3 — Solver Framework** | Iterative engine that pairs each matched strategy with the client's financials to estimate dollar savings. |
-| **4 — UI & Questionnaire** | DOM wiring for the three-page flow, question rendering, progress bar, navigation, and results display. Reads `tax_year` and `state` from the form to drive year-aware and state-aware calculations. |
+| Folder | Role |
+|--------|------|
+| **01-brooklyn** | Portfolio constructions, Delphi/Helix fund data, linear interpolation, and time-weighted return calculations. |
+| **02-tax-engine** | Loads `taxBrackets.json`, exposes `getFederalBrackets(year)` and `getStateBrackets(state, year)`, computes baseline and post-strategy federal + state tax. Handles LTCG rates, SE tax, NIIT, and standard/itemized deduction logic. Engine functions are year-parameterized for future multi-year projections. |
+| **03-solver** | Fee model and iterative engine that pairs each matched strategy with the client's financials to estimate dollar savings. |
+| **05-strategy-calculators** | Per-strategy estimators (retirement, business, charitable, credits, capital gains, investment, entity, estate, misc) plus a `limits.js` helper and an `orchestrator.js` that runs them. |
+| **04-ui** | DOM wiring for the three-page flow, question rendering, progress bar, navigation, and results display. Reads `tax_year` and `state` from the form to drive year-aware and state-aware calculations. Loaded last so it can call into the engines. |
 
+### Script Load Order
+
+Scripts in `index.html` are loaded in the following dependency order:
+
+1. `js/01-brooklyn/*` (data and regression helpers)
+2. `js/02-tax-engine/*` (data → loader → lookups → federal calc → state calc → baseline)
+3. `js/03-solver/*` (fees → solver)
+4. `js/05-strategy-calculators/*` (limits → all calc-* → orchestrator last)
+5. `js/04-ui/*` (questions-data → format-helpers → builders → render → state → progress → collector → calculate-and-display → page-controls last; `page-controls.js` wires `DOMContentLoaded`)
+
+> Note: `app.js` is intentionally retained on disk for line-by-line audit but is no longer referenced by `index.html`.
 ### data/strategies.json Schema
 
 Each strategy object follows this shape:
