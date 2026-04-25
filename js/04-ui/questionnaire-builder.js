@@ -29,5 +29,3 @@ function buildSectionQuestions(section) {
   });
 }
 
-function renderQuestion(container, q, section) {
-  var card = document.createElement('div');
