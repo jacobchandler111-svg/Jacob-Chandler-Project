@@ -7,9 +7,9 @@
 // - Beta1 and Advisor Managed share identical fee structures
 // - Fees are driven by leverage structure, not loss rate
 // - Per-segment models (fee vs gross notional):
-//     Beta 1:     fee = -0.00525 + 0.0000682 * GN  (RÂ² = 0.9994)
-//     Beta 0:     fee = -0.00920 + 0.0000660 * GN  (RÂ² = 1.0000)
-//     Beta 0.5:   fee = -0.00771 + 0.0000681 * GN  (RÂ² = 0.9998)
+//     Beta 1:     fee = -0.00525 + 0.0000682 * GN  (R² = 0.9994)
+//     Beta 0:     fee = -0.00920 + 0.0000660 * GN  (R² = 1.0000)
+//     Beta 0.5:   fee = -0.00771 + 0.0000681 * GN  (R² = 0.9998)
 //     Advisor:    identical to Beta 1
 // - Universal approximation: ~0.67 bps per 1% gross notional
 // - Marginal fee per 1% short position: ~1.34 bps (consistent across all segments)
