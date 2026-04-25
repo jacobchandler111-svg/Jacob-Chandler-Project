@@ -12,20 +12,20 @@ The engine walks a tax professional through three pages:
 
 1. **Strategy Selector** — Yes/No toggle questions across eight categories that narrow a universe of 50+ tax strategies down to only those relevant to the client.
 2. **Client Financial Inputs** — Hard-number fields for income, capital gains, real estate, business details, deductions, and family information, plus filing status, entity type, state, and tax year.
-3. **Strategy Summary** — Matched strategy recommendations grouped by category with estimated tax savings, complexity scores, and a federal vs. state tax breakdown.
+3. **Strategy Summary** — Matched strategy recommendations grouped by category with estimated tax savings, complexity scores, and a federal vs. state breakdown. Includes the Brookhaven optimizer (Brooklyn / Delphi / Helix capital-loss harvesting) when triggered.
 
-All calculations run entirely in the browser. No backend server is required once the static files are served.
+Everything runs in the browser. No server, no database, no build step.
 
 ---
 
 ## Key Features
 
-- **Multi-year tax brackets** — Toggle between 2025 and 2026 federal IRS brackets (loaded dynamically from `data/taxBrackets.json`).
-- **All 50 states + DC** — State income tax brackets for every U.S. state and the District of Columbia, with year-aware lookups for 2025 and 2026.
-- **Brooklyn Strategy Engine** — Linear interpolation and time-weighted regression across six portfolio constructions (Long-Only through 325/225 leverage) with Delphi and Helix fund data.
-- **Solver Framework** — Iterative solver that models pre- and post-strategy tax positions and computes estimated savings.
-- **Strategy Database** — JSON-driven strategy catalog with trigger-based matching, complexity scoring, and category grouping.
-- **No backend required** — Pure HTML/CSS/JS; deploy anywhere that serves static files (GitHub Pages, S3, Netlify, etc.).
+- **2025 and 2026 tax brackets** for federal plus all 50 states (single, MFJ, MFS, HoH).
+- **Federal AMT, NIIT, Additional Medicare, and self-employment tax** modeling.
+- **State tax engine** with bracket-aware deduction handling.
+- **Brookhaven optimizer** for capital-loss harvesting (Brooklyn / Delphi / Helix funds) with regression-based loss projection.
+- **Strategy solver** that ranks strategies by federal + state savings, complexity, and prerequisite filtering.
+- **Modular architecture** — 32 small JavaScript files organized into five numbered subsystems for low cognitive load and minimal merge conflicts.
 
 ---
 
@@ -33,149 +33,101 @@ All calculations run entirely in the browser. No backend server is required once
 
 ```
 Jacob-Chandler-Project/
-├── data/
-│   ├── strategies.json                # Tax strategy catalog (triggers, questions, categories)
-│   └── taxBrackets.json               # Federal + state brackets for 2025 and 2026
+├── index.html                              # Single-page entry, loads 32 scripts in order
+├── README.md                               # This file
+├── strategy-implementation-notes.md        # Strategy-by-strategy implementation status & math notes
+│
 ├── css/
-│   └── styles.css                     # Extracted styles (currently still inlined in index.html; cutover pending)
-├── js/
-│   ├── 01-brooklyn/                   # Brooklyn portfolio data, regression, fund data, date helpers
-│   │   ├── brooklyn-data.js
-│   │   ├── date-utils.js
-│   │   ├── delphi-helix.js
-│   │   └── brooklyn-regression.js
-│   ├── 02-tax-engine/                 # Federal + state tax calculation pipeline
-│   │   ├── tax-data.js
-│   │   ├── tax-loader.js
-│   │   ├── tax-lookups.js
-│   │   ├── tax-calc-federal.js
-│   │   ├── tax-calc-state.js
-│   │   └── tax-baseline.js
-│   ├── 03-solver/                     # Fee model and iterative savings solver
-│   │   ├── fees.js
-│   │   └── solver.js
-│   ├── 05-strategy-calculators/       # Per-strategy estimators + orchestrator
-│   │   ├── limits.js
-│   │   ├── calc-retirement.js
-│   │   ├── calc-business.js
-│   │   ├── calc-charitable.js
-│   │   ├── calc-credits.js
-│   │   ├── calc-capital-gains.js
-│   │   ├── calc-investment.js
-│   │   ├── calc-entity.js
-│   │   ├── calc-estate.js
-│   │   ├── calc-misc.js
-│   │   └── orchestrator.js
-│   └── 04-ui/                         # Questionnaire, rendering, page controls (loaded last)
-│       ├── questions-data.js
-│       ├── format-helpers.js
-│       ├── questionnaire-builder.js
-│       ├── questionnaire-render.js
-│       ├── answer-state.js
-│       ├── progress-and-brooklyn-ui.js
-│       ├── inputs-collector.js
-│       ├── calculate-and-display.js
-│       └── page-controls.js
-├── app.js                             # Pre-refactor monolith (kept on disk pending deep audit; not loaded by index.html)
-├── index.html                         # Three-page frontend; loads the 32 modular scripts in dependency order
-└── README.md
+│   └── styles.css                          # All visual styling (extracted from inline)
+│
+├── data/
+│   ├── strategies.json                     # 50+ tax strategy definitions, savings ranges, prerequisites
+│   └── taxBrackets.json                    # Federal + 50-state brackets for 2025 and 2026
+│
+└── js/
+    ├── 01-brooklyn/                        # Brookhaven optimizer fund data and date utilities
+    │   ├── brooklyn-data.js                # Brooklyn fund constants, regression coefficients
+    │   ├── date-utils.js                   # Year/quarter helpers used across optimizer
+    │   ├── delphi-helix.js                 # Delphi & Helix fund profiles
+    │   └── brooklyn-regression.js          # Loss projection regression
+    │
+    ├── 02-tax-engine/                      # Pure tax-math primitives (no UI, no DOM)
+    │   ├── tax-data.js                     # In-memory caches of bracket JSON
+    │   ├── tax-loader.js                   # Async JSON fetcher
+    │   ├── tax-lookups.js                  # State / filing-status lookups
+    │   ├── tax-calc-federal.js             # Federal liability + AMT + NIIT + SE tax
+    │   ├── tax-calc-state.js               # State liability with deduction handling
+    │   └── tax-baseline.js                 # Pre-strategy baseline calculator
+    │
+    ├── 03-solver/                          # Strategy ranking & fee modeling
+    │   ├── fees.js                         # Strategy implementation fee estimates
+    │   └── solver.js                       # Filter / rank / select strategies
+    │
+    ├── 04-ui/                              # All DOM-touching code
+    │   ├── questions-data.js               # Yes/No question definitions
+    │   ├── format-helpers.js               # Currency / percent formatting
+    │   ├── questionnaire-builder.js        # Builds question DOM structure
+    │   ├── questionnaire-render.js         # Renders questions and handles toggles
+    │   ├── answer-state.js                 # Persists answers across pages
+    │   ├── progress-and-brooklyn-ui.js     # Progress bar + optimizer UI
+    │   ├── inputs-collector.js             # Reads client financial inputs from form
+    │   ├── calculate-and-display.js        # Main calculate handler + summary render
+    │   └── page-controls.js                # Page navigation, Reset, Print
+    │
+    └── 05-strategy-calculators/            # Per-category strategy savings calculators
+        ├── limits.js                       # Income limits, phase-outs, contribution caps
+        ├── calc-retirement.js              # 401(k), IRA, SEP, defined-benefit
+        ├── calc-business.js                # QBI, accountable plan, augusta rule, etc.
+        ├── calc-charitable.js              # DAF, CRT, bunching, conservation easement
+        ├── calc-credits.js                 # R&D, energy, WOTC, child & dependent
+        ├── calc-capital-gains.js           # Brooklyn / Delphi / Helix / 1031 / QOZ
+        ├── calc-investment.js              # OZ funds, oil & gas, MLPs
+        ├── calc-entity.js                  # S-corp election, holding co structures
+        ├── calc-estate.js                  # SLAT, GRAT, ILIT, gifting
+        ├── calc-misc.js                    # Catch-all strategies not in other categories
+        └── orchestrator.js                 # Dispatches per-category calculators
 ```
-
-### Module Sections
-
-| Folder | Role |
-|--------|------|
-| **01-brooklyn** | Portfolio constructions, Delphi/Helix fund data, linear interpolation, and time-weighted return calculations. |
-| **02-tax-engine** | Loads `taxBrackets.json`, exposes `getFederalBrackets(year)` and `getStateBrackets(state, year)`, computes baseline and post-strategy federal + state tax. Handles LTCG rates, SE tax, NIIT, and standard/itemized deduction logic. Engine functions are year-parameterized for future multi-year projections. |
-| **03-solver** | Fee model and iterative engine that pairs each matched strategy with the client's financials to estimate dollar savings. |
-| **05-strategy-calculators** | Per-strategy estimators (retirement, business, charitable, credits, capital gains, investment, entity, estate, misc) plus a `limits.js` helper and an `orchestrator.js` that runs them. |
-| **04-ui** | DOM wiring for the three-page flow, question rendering, progress bar, navigation, and results display. Reads `tax_year` and `state` from the form to drive year-aware and state-aware calculations. Loaded last so it can call into the engines. |
 
 ### Script Load Order
 
-Scripts in `index.html` are loaded in the following dependency order:
+Subsystems load in numeric order (01 → 02 → 03 → 05 → 04). The reason 04-ui loads last is that it depends on every primitive, lookup, and calculator below it. Within `05-strategy-calculators/`, `limits.js` loads first so every `calc-*.js` can read phase-out thresholds.
 
-1. `js/01-brooklyn/*` (data and regression helpers)
-2. `js/02-tax-engine/*` (data → loader → lookups → federal calc → state calc → baseline)
-3. `js/03-solver/*` (fees → solver)
-4. `js/05-strategy-calculators/*` (limits → all calc-* → orchestrator last)
-5. `js/04-ui/*` (questions-data → format-helpers → builders → render → state → progress → collector → calculate-and-display → page-controls last; `page-controls.js` wires `DOMContentLoaded`)
-
-> Note: `app.js` is intentionally retained on disk for line-by-line audit but is no longer referenced by `index.html`.
 ### data/strategies.json Schema
 
-Each strategy object follows this shape:
+Each strategy entry includes:
 
-```jsonc
+```json
 {
-  "id": 1,
-  "name": "1031 Exchange on Real Estate (Like Kind Exchange)",
-  "type": "Business - Other",
-  "applicable_to": "Both",          // "Individual", "Business", or "Both"
-  "complexity": "High",             // "Low", "Medium", or "High"
-  "recurring": "Never",             // "Never", "Yearly", "Quarterly", etc.
-  "tags": ["Real Estate Strategies"],
-  "deadline": "12/31",
-  "last_updated": "04/01/2026",
-  "triggers": [
-    "long_term_capital_gains",
-    "real_estate_sale",
-    "investment_property"
-  ],
-  "questions": [
-    "Do you own investment real estate you plan to sell?",
-    "Are you looking to defer capital gains from a property sale?"
-  ],
-  "category": "Capital Gains Deferral"
+  "id": 12,
+  "name": "Solo 401(k)",
+  "category": "Retirement Planning",
+  "savingsLow": 5000,
+  "savingsHigh": 25000,
+  "complexity": 2,
+  "triggers": ["self_employed", "no_employees"],
+  "prerequisites": ["business_income > 0"],
+  "notes": "..."
 }
 ```
 
 ### data/taxBrackets.json Structure
 
-```jsonc
-{
-  "federal": {
-    "2025": {
-      "single": [ { "min": 0, "max": 11925, "rate": 0.10 }, ... ],
-      "married_filing_jointly": [ ... ],
-      "head_of_household": [ ... ],
-      "married_filing_separately": [ ... ]
-    },
-    "2026": { ... }
-  },
-  "state": {
-    "CA": {
-      "2025": [ { "min": 0, "max": 10412, "rate": 0.01 }, ... ],
-      "2026": [ ... ]
-    },
-    "TX": {
-      "2025": [ { "min": 0, "max": 999999999, "rate": 0.0 } ],
-      ...
-    }
-    // ... all 50 states + DC
-  }
-}
-```
-
-States with no income tax (TX, FL, NV, WY, SD, AK, WA, NH, TN) have a single bracket with a 0% rate. The sentinel value `999999999` is used in place of `Infinity` (which JSON does not support) and is converted at load time in `app.js`.
+Federal and 50 states, each with brackets for 2025 and 2026 across all four filing statuses (single, mfj, mfs, hoh). States with no income tax (TX, FL, NV, WY, SD, AK, WA, NH, TN) have a single bracket with a 0% rate. The sentinel value `999999999` is used in place of `Infinity` (which JSON does not support) and is converted at load time inside `js/02-tax-engine/tax-loader.js`.
 
 ---
 
 ## Getting Started
 
-Because there is no backend, you can run the app by opening `index.html` directly in a browser or by serving the repo with any static file server.
-
-```bash
+```
 # Clone
 git clone https://github.com/jacobchandler111-svg/Jacob-Chandler-Project.git
 cd Jacob-Chandler-Project
 
 # Option A — open directly
-open index.html        # macOS
-start index.html       # Windows
+open index.html
 
 # Option B — lightweight local server (Python)
-python -m http.server 8000
+python3 -m http.server 8000
 # then visit http://localhost:8000
 
 # Option C — GitHub Pages
@@ -186,61 +138,59 @@ python -m http.server 8000
 
 ## Tax Strategy Categories
 
-The strategy database covers the following categories:
+1. Retirement Planning
+2. Business / Self-Employment
+3. Charitable Giving
+4. Tax Credits
+5. Capital Gains Management
+6. Investment Strategies
+7. Entity Structuring
+8. Estate Planning
 
-Capital Gains Deferral, Business Tax Planning, Retirement Planning, Depreciation, Charitable Planning, Entity Planning, Income Shifting, Education Planning, Estate Planning, Investment Tax Planning, and OBBBA Updates (2026 legislation provisions).
+A ninth informal bucket, "Misc," catches strategies that don't cleanly fit elsewhere.
 
 ---
 
 ## Brooklyn Strategy Benchmarks
 
-The Brooklyn Strategy Engine models investment performance across multiple portfolio leverage constructions: Long-Only, 130/30, 145/45, 200/100, 250/150, and 325/225. It includes Delphi Class A and B fund allocations, Helix TA fund data, and 10-year performance projections with fee structures. The engine uses linear interpolation between data points and time-weighted regression to produce expected return and loss-rate estimates for each construction.
+Brooklyn-fund losses are projected via a regression on historical fund returns (see `js/01-brooklyn/brooklyn-regression.js`). Delphi and Helix follow simpler ordinary-income offset models (`js/01-brooklyn/delphi-helix.js`).
 
 ---
 
 ## Adding a New Strategy — Prompt Template
 
-Use the prompt below when asking an AI assistant (e.g., Claude) to add a new strategy to the project. Copy the template, fill in the bracketed fields with the details of the strategy you want to add, and paste the completed prompt into the chat.
+When asking an AI assistant to add a strategy:
 
-```
-I need you to add a new tax strategy to my Brookhaven Tax Strategy Planning Engine.
+1. Append the strategy entry to `data/strategies.json` with id, name, category, savings range, complexity, triggers, prerequisites, and notes.
+2. If there are any new trigger keys that don't already exist in the questionnaire, add the corresponding Yes/No question(s) in `js/04-ui/questions-data.js` under the appropriate category.
+3. If the strategy requires a new category that doesn't exist yet, add it to both `data/strategies.json` and the UI rendering logic in `js/04-ui/questionnaire-render.js` and `js/04-ui/calculate-and-display.js`.
+4. Add the savings calculator function to the appropriate `js/05-strategy-calculators/calc-*.js` file (or create a new one and register it in the orchestrator).
+5. Test with a manual scenario, then run the seed-based regression harness on the live site.
 
-Repository: https://github.com/jacobchandler111-svg/Jacob-Chandler-Project
-Branch: main
+---
 
-Here are the details for the new strategy:
+## Architecture History
 
-STRATEGY NAME: [Full name of the strategy, e.g., "Qualified Small Business Stock (Section 1202)"]
-TYPE: [Category type, e.g., "Business - Other", "Investment", "Depreciation", "Fringe Benefit", etc.]
-APPLICABLE TO: [Who can use it — "Individual", "Business", or "Both"]
-COMPLEXITY: [How complex to implement — "Low", "Medium", or "High"]
-RECURRING: [How often it can be applied — "Never", "Yearly", "Quarterly", etc.]
-TAGS: [Any tags, e.g., "Real Estate Strategies", "OBBBA", etc. Leave blank if none]
-DEADLINE: [Key deadline, e.g., "12/31", "04/15", "09/15"]
-TRIGGERS: [What client answers should cause this strategy to surface — list the trigger keys, e.g., "business_owner", "capital_gains", "real_estate_sale"]
-QUESTIONS: [The Yes/No screening questions to show in Page 1, e.g., "Do you own shares in a qualified small business?", "Have you held QSBS for more than 5 years?"]
-CATEGORY: [Which grouping this falls under, e.g., "Capital Gains Deferral", "Business Tax Planning", "Retirement Planning", "Entity Planning", etc.]
-DESCRIPTION / NOTES: [Any additional context about how the strategy works, savings estimates, or special rules to be aware of]
+The codebase was originally a single `app.js` monolith. In April 2026 it was modularized into the 32-file structure documented above:
 
-Please:
-1. Add the strategy entry to data/strategies.json with the next available ID.
-2. If there are any new trigger keys that don't already exist in the questionnaire in app.js (Section 4), add the corresponding Yes/No question(s) to the appropriate category.
-3. If the strategy requires a new category that doesn't exist yet, add it to both the strategies.json and the UI rendering logic in app.js.
-4. Commit the changes to main with a clear commit message.
-```
+- All 110 functions extracted into the appropriate subsystem.
+- Byte-identical parity validated via a 1000-iteration Mulberry32 Monte Carlo against the pre-refactor build (aggregate hash `eb244545…b55744da`).
+- Four targeted manual scenarios (single SE-heavy, MFJ retiree, MFS, HoH) confirmed identical to the cent.
+- The original `app.js` was deleted from the repo in commit `9eba1e6f` once parity was confirmed.
+
+For developers (human or AI) working on the strategy calculators, see `js/05-strategy-calculators/AI_DEVELOPER_NOTES.md` for load-order rules, known quirks, and don't-touch zones.
 
 ---
 
 ## Future Work
 
-- Add additional tax years as IRS publishes new brackets (the data structure supports arbitrary years).
-- Verify and update 2026 state bracket projections once official rates are published.
-- Expand strategy database as new legislation or planning techniques emerge.
-- Build OCR backend for document upload auto-population on Page 2.
-- PDF export of strategy summary results.
+- Multi-year projections (calculations rolling forward across years).
+- Client-facing questionnaire reskin (more outcome-focused phrasing).
+- Optimizer enrolment integration so Delphi / Helix funds participate in solver ranking.
+- Per-strategy what-if comparison view.
 
 ---
 
 ## License
 
-Private project — Brookhaven internal use.
+Proprietary — internal Brookhaven use only.
