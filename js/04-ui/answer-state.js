@@ -1,5 +1,5 @@
 // FILE: js/04-ui/answer-state.js
-// Answer state management: autoFillLeverage, setAnswer, rebuildConditionalSections, syncPage2Visibility, updateProgress
+// Answer state management: autoFillLeverage, setAnswer, rebuildConditionalSections, syncPage2Visibility
 
 function autoFillLeverage() {
   var beta = userAnswers['_select_beta_selection_q'] || '1';
