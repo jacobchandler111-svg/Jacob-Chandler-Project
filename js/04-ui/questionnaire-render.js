@@ -1,6 +1,8 @@
 // FILE: js/04-ui/questionnaire-render.js
 // Question rendering: renderQuestion, renderFollowUpQuestion, renderInlineInput, renderSelectQuestion, renderPresetQuestion
 
+function renderQuestion(container, q, section) {
+  var card = document.createElement('div');
   card.className = 'question-card';
   card.setAttribute('data-question', q.id);
   var textDiv = document.createElement('div');
